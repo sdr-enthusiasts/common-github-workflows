@@ -810,7 +810,7 @@ jobs:
           echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
 
   build_nohealthcheck:
-    name: Build (manifest)
+    name: Build nohealthcheck (manifest)
     if: needs.workflows_env.outputs.build_multi_arch == 'true'
     runs-on: ubuntu-latest
     needs: [workflows_env]
