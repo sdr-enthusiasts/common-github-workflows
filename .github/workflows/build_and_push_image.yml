@@ -394,7 +394,7 @@ jobs:
     name: Build
     if: ${{ needs.workflows_env.outputs.build_single_arch }}
     runs-on: ubuntu-latest
-    needs: [workflows_env]
+    needs: [workflows_env, build_nohealthcheck, build_platform_specific_nohealthcheck]
     strategy:
       matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
 
@@ -530,7 +530,7 @@ jobs:
     name: Build (manifest)
     if: ${{ needs.workflows_env.outputs.build_multi_arch }}
     runs-on: ubuntu-latest
-    needs: [workflows_env]
+    needs: [workflows_env, build_nohealthcheck, build_platform_specific_nohealthcheck]
 
     steps:
 
