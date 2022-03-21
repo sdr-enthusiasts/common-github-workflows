@@ -89,6 +89,11 @@ on:
         type: boolean
         required: false
         default: true
+      build_nohealthcheck:
+        description: 'Set to true to build a nohealthcheck version'
+        type: boolean
+        required: false
+        default: true
 
     secrets:
       dockerhub_token:
@@ -125,6 +130,7 @@ jobs:
       build_single_arch: ${{ steps.workflow_env_build_single_arch.outputs.build_single_arch_enabled }}
       build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
       build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
+      build_nohealthcheck: ${{ steps.workflow_env_build_nohealthcheck.outputs.build_nohealthcheck }}
 
     steps:
 
@@ -346,6 +352,18 @@ jobs:
           FAIL_STEP=0
           if [[ "${BUILD_VERSION_SPECIFIC,,}" == "true" ]]; then
             echo "::set-output name=build_version_specific::true"
+          fi
+          exit $FAIL_STEP
+      
+      - name: "check 'build_nohealthcheck'"
+        id: workflow_env_build_nohealthcheck
+        env:
+          BUILD_NOHEALTHCHECK: ${{ inputs.build_nohealthcheck }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_NOHEALTHCHECK,,}" == "true" ]]; then
+            echo "::set-output name=build_nohealthcheck::true"
           fi
           exit $FAIL_STEP
 
@@ -623,6 +641,280 @@ jobs:
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}
+          platforms: ${{ needs.workflows_env.outputs.platforms_csv }}
+          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ needs.workflows_env.outputs.push_enabled }}
+
+      # Report images
+      - name: Log images built & pushed
+        if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
+        run: |
+          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+
+  build_platform_specific_nohealthcheck:
+    name: Build nohealthcheck
+    if: |
+      needs.workflows_env.outputs.build_single_arch == 'true' &&
+      needs.workflows_env.outputs.build_nohealthcheck == 'true'
+    runs-on: ubuntu-latest
+    needs: [workflows_env]
+    strategy:
+      matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
+
+    steps:
+
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Determine single arch suffix
+      - name: Determine platform suffix
+        id: platform_suffix
+        run: |
+          set -x
+          ARCH_SUFFIX=$(echo "${{ matrix.platform }}" | tr "/" "_")
+          echo "::set-output name=platform_suffix::${ARCH_SUFFIX,,}"
+
+      # Log into dockerhub
+      - name: Login to DockerHub
+        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          password: ${{ secrets.dockerhub_token }}
+
+      # Log into ghcr.io
+      - name: Login to GitHub Container Registry
+        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
+          password: ${{ secrets.ghcr_token }}
+
+      # Set up QEMU for multi-arch builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      # Set up buildx
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      # Patch dockerfile to remove healthcheck
+      - name: Patch Dockerfile to remove healthcheck
+        run: sed '/^HEALTHCHECK /d' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
+
+      # Cache build of image & get image version from build output
+      - name: Cache build of image
+        id: cache_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
+          platforms: ${{ matrix.platform }}
+          tags: cached_build:${{ steps.platform_suffix.outputs.platform_suffix }}
+          load: true
+
+      # Determine image version
+      - name: Determine image version
+        if: ${{ needs.workflows_env.outputs.build_version_specific }}
+        id: image_version
+        run: |
+          set -x
+          VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} /IMAGE_VERSION)
+          if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
+            echo "::warning title=${{ matrix.platform }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::set-output name=build_version_specific::false"
+          else
+            echo "::set-output name=build_version_specific::true"
+            echo "::set-output name=image_version::${VERSION_FROM_IMAGE}"
+          fi
+
+      # Determine image names/tags
+      - name: Determine image names/tags
+        id: image_names_tags
+        run: |
+          set -x
+          IMAGE_NAMES=()
+          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
+            IMAGE_NAMES+=("test_build")
+          fi
+          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
+          echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
+          IMAGE_TAGS=()
+          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
+          fi
+          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+            IMAGE_TAGS+=("latest_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
+          fi
+          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
+          echo "::set-output name=tags::${IMAGE_TAGS_CSV::-1}"
+          IMAGE_FULL_TAGS=()
+          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
+            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
+              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
+            done
+          done
+          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
+          echo "::set-output name=full_name_tags::${IMAGE_FULL_TAGS_CSV::-1}"
+
+      # Get metadata from repo
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ steps.image_names_tags.outputs.names }}
+
+      # Push final image
+      - name: Build & Push Final Image
+        id: final_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
+          platforms: ${{ matrix.platform }}
+          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ needs.workflows_env.outputs.push_enabled }}
+
+      # Report images
+      - name: Log images built & pushed
+        if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
+        run: |
+          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+
+  build_nohealthcheck:
+    name: Build (manifest)
+    if: |
+      needs.workflows_env.outputs.build_multi_arch == 'true' &&
+      needs.workflows_env.outputs.build_nohealthcheck == 'true'
+    runs-on: ubuntu-latest
+    needs: [workflows_env]
+
+    steps:
+
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Log into dockerhub
+      - name: Login to DockerHub
+        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          password: ${{ secrets.dockerhub_token }}
+
+      # Log into ghcr.io
+      - name: Login to GitHub Container Registry
+        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
+          password: ${{ secrets.ghcr_token }}
+
+      # Set up QEMU for multi-arch builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      # Set up buildx
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      
+      # Patch dockerfile to remove healthcheck
+      - name: Patch Dockerfile to remove healthcheck
+        run: sed '/^HEALTHCHECK /d' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
+
+      # Cache build of linux/amd64 image & get image version from build output
+      - name: Cache build of image
+        id: cache_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
+          platforms: linux/amd64
+          tags: cached_build:latest
+          load: true
+
+      # Determine image version
+      - name: Determine image version
+        if: ${{ needs.workflows_env.outputs.build_version_specific }}
+        id: image_version
+        run: |
+          set -x
+          VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
+          if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
+            echo "::warning title=No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::set-output name=build_version_specific::false"
+          else
+            echo "::set-output name=build_version_specific::true"
+            echo "::set-output name=image_version::${VERSION_FROM_IMAGE}"
+          fi
+
+      # Determine image names/tags
+      - name: Determine image names/tags
+        id: image_names_tags
+        run: |
+          set -x
+          IMAGE_NAMES=()
+          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
+            IMAGE_NAMES+=("test_build")
+          fi
+          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
+          echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
+          IMAGE_TAGS=()
+          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_nohealthcheck")
+          fi
+          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+            IMAGE_TAGS+=("latest_nohealthcheck")
+          fi
+          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
+          echo "::set-output name=tags::${IMAGE_TAGS_CSV::-1}"
+          IMAGE_FULL_TAGS=()
+          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
+            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
+              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
+            done
+          done
+          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
+          echo "::set-output name=full_name_tags::${IMAGE_FULL_TAGS_CSV::-1}"
+
+      # Get metadata from repo
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ steps.image_names_tags.outputs.names }}
+
+      # Build & push final images
+      - name: Build & Push Final Image
+        id: final_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
           platforms: ${{ needs.workflows_env.outputs.platforms_csv }}
           tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
           labels: ${{ steps.meta.outputs.labels }}

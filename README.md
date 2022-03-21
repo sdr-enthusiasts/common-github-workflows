@@ -41,15 +41,16 @@ jobs:
 | `dockerhub_repo` | The dockerhub repository the image should be pushed to | `false` | |
 | `ghcr_repo_owner` | The github username/profile/organisation the repo to be pushed to belongs to | `false` | |
 | `ghcr_repo` | The ghcr.io repository the image should be pushed to | `false` | |
-| `platform_linux_arm32v6_enabled` | Set to true to build for the `linux/arm/v6` platform | `false` | `false` | |
-| `platform_linux_arm32v7_enabled` | Set to true to build for the `linux/arm/v7` platform | `false` | `true` | |
-| `platform_linux_arm64v8_enabled` | Set to true to build for the `linux/arm64` platform | `false` | `true` | |
-| `platform_linux_amd64_enabled` | Set to true to build for the `linux/amd64` platform | `false` | `true` | |
-| `platform_linux_i386_enabled` | Set to true to build for the `linux/i386` platform | `false` | `false` | |
-| `build_enabled` | Set to `true` to build images | `false` | `true` | |
-| `build_platform_specific` | Set to `true` to also build platform specific images | `false` | `true` | |
-| `build_latest` | Set to `true` to include a latest tag | `false` | `true` | |
-| `build_version_specific` | Set to `true` to include a version tag | `false` | `true` | |
+| `platform_linux_arm32v6_enabled` | Set to true to build for the `linux/arm/v6` platform | `false` | `false` |
+| `platform_linux_arm32v7_enabled` | Set to true to build for the `linux/arm/v7` platform | `false` | `true` |
+| `platform_linux_arm64v8_enabled` | Set to true to build for the `linux/arm64` platform | `false` | `true` |
+| `platform_linux_amd64_enabled` | Set to true to build for the `linux/amd64` platform | `false` | `true` |
+| `platform_linux_i386_enabled` | Set to true to build for the `linux/i386` platform | `false` | `false` |
+| `build_enabled` | Set to `true` to build images | `false` | `true` |
+| `build_platform_specific` | Set to `true` to also build platform specific images | `false` | `true` |
+| `build_latest` | Set to `true` to include a latest tag | `false` | `true` |
+| `build_version_specific` | Set to `true` to include a version tag | `false` | `true` |
+| `build_nohealthcheck` | Set to true to build a nohealthcheck version | `false` | `true` |
 
 ### Secrets
 
