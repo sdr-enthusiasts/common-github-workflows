@@ -1,0 +1,635 @@
+---
+name: Build & Push Docker Images
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_context:
+        description: 'Path to docker build context'
+        required: false
+        type: string
+        default: '.'
+      docker_build_file:
+        description: 'Path to the dockerfile within docker_build_context'
+        required: false
+        type: string
+        default: './Dockerfile'
+      push_enabled:
+        description: 'Set to true to push the image'
+        type: boolean
+        required: false
+        default: false
+      push_destinations:
+        description: "Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
+        required: false
+        type: string
+        default: 'ghcr.io'
+      dockerhub_profile:
+        description: "The dockerhub username/profile/organisation the image should be pushed to"
+        required: false
+        type: string
+        default: ''
+      dockerhub_repo:
+        description: "The dockerhub repository the image should be pushed to"
+        required: false
+        type: string
+        default: ''
+      ghcr_repo_owner:
+        description: "The github username/profile/organisation the repo to be pushed to belongs to"
+        required: false
+        type: string
+        default: ''
+      ghcr_repo:
+        description: "The ghcr.io repository the image should be pushed to"
+        required: false
+        type: string
+        default: ''
+      platform_linux_arm32v6_enabled:
+        description: 'Set to true to build for the linux/arm/v6 platform'
+        type: boolean
+        required: false
+        default: false
+      platform_linux_arm32v7_enabled:
+        description: 'Set to true to build for the linux/arm/v7 platform'
+        type: boolean
+        required: false
+        default: true
+      platform_linux_arm64v8_enabled:
+        description: 'Set to true to build for the linux/arm64 platform'
+        type: boolean
+        required: false
+        default: true
+      platform_linux_amd64_enabled:
+        description: 'Set to true to build for the linux/amd64 platform'
+        type: boolean
+        required: false
+        default: true
+      platform_linux_i386_enabled:
+        description: 'Set to true to build for the linux/i386 platform'
+        type: boolean
+        required: false
+        default: false
+      build_enabled:
+        description: 'Set to true to build images'
+        type: boolean
+        required: false
+        default: true
+      build_platform_specific:
+        description: 'Set to true to also build platform specific images'
+        type: boolean
+        required: false
+        default: true
+      build_latest:
+        description: 'Set to true to include a latest tag'
+        type: boolean
+        required: false
+        default: true
+      build_version_specific:
+        description: 'Set to true to include a version tag'
+        type: boolean
+        required: false
+        default: true
+
+    secrets:
+      dockerhub_token:
+        description: "If pushing to dockerhub, this should be a token for dockerhub_profile"
+        required: false
+      ghcr_token:
+        description: "If pushing to ghcr.io, this should be a github token"
+        required: false
+
+jobs:
+
+  workflows_env:
+    name: Prepare workflow environment
+    runs-on: ubuntu-latest
+
+    outputs:
+      docker_build_context: ${{ steps.workflow_env_build.outputs.context }}
+      docker_build_file: ${{ steps.workflow_env_build.outputs.file }}
+      push_enabled: ${{ steps.workflow_env_push_enabled.outputs.push_enabled }}
+      output_dockerhub_enabled: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled }}
+      output_ghcr_io_enabled: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled }}
+      dockerhub_profile: ${{ steps.workflow_env_dockerhub_profile.outputs.dockerhub_profile }}
+      dockerhub_repo: ${{ steps.workflow_env_dockerhub_repo.outputs.dockerhub_repo }}
+      ghcr_repo: ${{ steps.workflow_env_ghcr_repo.outputs.ghcr_repo}}
+      ghcr_repo_owner: ${{ steps.workflow_env_ghcr_repo_owner.outputs.ghcr_repo_owner}}
+      platform_linux_arm32v6_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}
+      platform_linux_arm32v7_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v7 }}
+      platform_linux_arm64v8_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm64 }}
+      platform_linux_amd64_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_amd64 }}
+      platform_linux_i386_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}
+      platforms_csv: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_csv }}
+      platforms_matrix_json: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_matrix_json }}
+      build_multi_arch: ${{ steps.workflow_env_build_multi_arch.outputs.build_multi_arch_enabled }}
+      build_single_arch: ${{ steps.workflow_env_build_single_arch.outputs.build_single_arch_enabled }}
+      build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
+      build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
+
+    steps:
+
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Check imported environment variable PUSH_ENABLED
+      - name: "check 'push_enabled'"
+        id: workflow_env_push_enabled
+        env:
+          PUSH_ENABLED: ${{ inputs.push_enabled }}
+        run: |
+          FAIL_STEP=0
+          if [[ "${PUSH_ENABLED,,}" == "true" ]]; then
+            echo "::set-output name=push_enabled::true"
+          elif [[ "${PUSH_ENABLED,,}" == "false" ]]; then
+            echo "::set-output name=push_enabled::false"
+          else
+            echo "::error title=Environment variable invalid::push_enabled should be 'true' or 'false'"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable PUSH_DESTINATIONS
+      - name: "check 'push_destinations'"
+        id: workflow_env_push_destinations
+        if: ${{ steps.workflow_env_push_enabled.outputs.push_enabled == 'true' }}
+        env:
+          PUSH_DESTINATIONS: ${{ inputs.push_destinations }}
+        run: |
+          FAIL_STEP=0
+          echo "::set-output name=ghcr_io_enabled::false"
+          echo "::set-output name=dockerhub_enabled::false"
+          IFS=';' read -r -a PUSH_DESTINATIONS_ARRAY <<< "$PUSH_DESTINATIONS"
+          for PUSH_DESTINATION in "${PUSH_DESTINATIONS_ARRAY[@]}"; do
+            if [[ "${PUSH_DESTINATION,,}" == 'ghcr.io' ]]; then
+              echo "::set-output name=ghcr_io_enabled::true"
+            elif [[ "${PUSH_DESTINATION,,}" == 'dockerhub' ]]; then
+              echo "::set-output name=dockerhub_enabled::true"
+            else
+              echo "::error title=Environment variable invalid::push_destinations includes '$PUSH_DESTINATION'. Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
+              FAIL_STEP=1
+            fi
+          done
+          exit $FAIL_STEP
+
+      # Check imported environment variable dockerhub_profile
+      - name: "check 'dockerhub_profile'"
+        id: workflow_env_dockerhub_profile
+        if: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled == 'true' }}
+        env:
+          DOCKERHUB_PROFILE: ${{ inputs.dockerhub_profile }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${DOCKERHUB_PROFILE}" ]]; then
+            echo "::set-output name=dockerhub_profile::$DOCKERHUB_PROFILE"
+          else
+            echo "::error title=Environment variable invalid::DOCKERHUB_PROFILE is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable dockerhub_repo
+      - name: "check 'dockerhub_repo'"
+        id: workflow_env_dockerhub_repo
+        if: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled == 'true' }}
+        env:
+          DOCKERHUB_REPO: ${{ inputs.dockerhub_repo }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${DOCKERHUB_REPO}" ]]; then
+            echo "::set-output name=dockerhub_repo::$DOCKERHUB_REPO"
+          else
+            echo "::error title=Environment variable invalid::dockerhub_repo is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable ghcr_repo
+      - name: "check 'ghcr_repo'"
+        id: workflow_env_ghcr_repo
+        if: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled == 'true' }}
+        env:
+          GHCR_REPO: ${{ inputs.ghcr_repo }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${GHCR_REPO}" ]]; then
+            echo "::set-output name=ghcr_repo::$GHCR_REPO"
+          else
+            echo "::error title=Environment variable invalid::ghcr_repo is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable ghcr_repo
+      - name: "check 'ghcr_repo_owner'"
+        id: workflow_env_ghcr_repo_owner
+        if: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled == 'true' }}
+        env:
+          GHCR_REPO_OWNER: ${{ inputs.ghcr_repo_owner }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${GHCR_REPO_OWNER}" ]]; then
+            echo "::set-output name=ghcr_repo_owner::$GHCR_REPO_OWNER"
+          else
+            echo "::error title=Environment variable invalid::ghcr_repo_owner is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables PLATFORM_<platform>_ENABLED
+      - name: "check 'PLATFORM_<platform>_ENABLED'"
+        id: workflow_env_platform_enabled
+        env:
+          PLATFORM_LINUX_ARM32V6_ENABLED: ${{ inputs.platform_linux_arm32v6_enabled }}
+          PLATFORM_LINUX_ARM32V7_ENABLED: ${{ inputs.platform_linux_arm32v7_enabled }}
+          PLATFORM_LINUX_ARM64V8_ENABLED: ${{ inputs.platform_linux_arm64v8_enabled }}
+          PLATFORM_LINUX_AMD64_ENABLED: ${{ inputs.platform_linux_amd64_enabled }}
+          PLATFORM_LINUX_I386_ENABLED: ${{ inputs.platform_linux_i386_enabled }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          NUM_ARCHES=0
+          if [[ "${PLATFORM_LINUX_ARM32V6_ENABLED,,}" == "true" ]]; then
+            echo "::set-output name=linux_arm32v6::true"
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "${PLATFORM_LINUX_ARM32V7_ENABLED,,}" == "true" ]]; then
+            echo "::set-output name=linux_arm32v7::true"
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "${PLATFORM_LINUX_ARM64V8_ENABLED,,}" == "true" ]]; then
+            echo "::set-output name=linux_arm64::true"
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "${PLATFORM_LINUX_AMD64_ENABLED,,}" == "true" ]]; then
+            echo "::set-output name=linux_amd64::true"
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "${PLATFORM_LINUX_I386_ENABLED,,}" == "true" ]]; then
+            echo "::set-output name=linux_i386::true"
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "$NUM_ARCHES" -le 0 ]]; then
+            echo "::error title=Environment variable invalid::platform_<platform>_enabled need at least one platform enabled"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_enabled
+      - name: "check 'build_enabled'"
+        id: workflow_env_build_multi_arch
+        env:
+          BUILD: ${{ inputs.build_enabled }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD,,}" == "true" ]]; then
+            echo "::set-output name=build_multi_arch_enabled::true"
+            MULTI_ARCH_ARRAY=()
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/arm/v6")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v7 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/arm/v7")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm64 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/arm64")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_amd64 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/amd64")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/i386")
+            fi
+            printf -v MULTI_ARCH_CSV '%s,' "${MULTI_ARCH_ARRAY[@]}"
+            echo "::set-output name=multi_arch_csv::${MULTI_ARCH_CSV::-1}"
+            printf -v MULTI_ARCH_JSON '"%s",' "${MULTI_ARCH_ARRAY[@]}"
+            echo "::set-output name=multi_arch_matrix_json::{\"platform\":[${MULTI_ARCH_JSON::-1}]}"
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_platform_specific
+      - name: "check 'build_platform_specific'"
+        id: workflow_env_build_single_arch
+        env:
+          BUILD_PLATFORM_SPECIFIC: ${{ inputs.build_platform_specific }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_PLATFORM_SPECIFIC,,}" == "true" ]]; then
+            echo "::set-output name=build_single_arch_enabled::true"
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_latest
+      - name: "check 'build_latest'"
+        id: workflow_env_build_latest
+        env:
+          BUILD_LATEST: ${{ inputs.build_latest }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_LATEST,,}" == "true" ]]; then
+            echo "::set-output name=build_latest::true"
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_version_specific
+      - name: "check 'build_version_specific'"
+        id: workflow_env_build_version_specific
+        env:
+          BUILD_VERSION_SPECIFIC: ${{ inputs.build_version_specific }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_VERSION_SPECIFIC,,}" == "true" ]]; then
+            echo "::set-output name=build_version_specific::true"
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables docker_build_*
+      - name: "check 'docker_build_*'"
+        id: workflow_env_build
+        env:
+          DOCKER_BUILD_CONTEXT: ${{ inputs.docker_build_context }}
+          DOCKER_BUILD_FILE: ${{ inputs.docker_build_file }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ -n "${DOCKER_BUILD_CONTEXT}" ]]; then
+            echo "::set-output name=context::${DOCKER_BUILD_CONTEXT}"
+          else
+            FAIL_STEP=1
+            echo "::error title=Environment variable invalid::DOCKER_BUILD_CONTEXT is empty"
+          fi
+          if [[ -n "${DOCKER_BUILD_FILE}" ]]; then
+            echo "::set-output name=file::${DOCKER_BUILD_FILE}"
+          else
+            FAIL_STEP=1
+            echo "::error title=Environment variable invalid::DOCKER_BUILD_FILE is empty"
+          fi
+          exit $FAIL_STEP
+
+  build_platform_specific:
+    name: Build
+    if: ${{ needs.workflows_env.outputs.build_single_arch }}
+    runs-on: ubuntu-latest
+    needs: [workflows_env]
+    strategy:
+      matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
+
+    steps:
+
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Determine single arch suffix
+      - name: Determine platform suffix
+        id: platform_suffix
+        run: |
+          set -x
+          ARCH_SUFFIX=$(echo "${{ matrix.platform }}" | tr "/" "_")
+          echo "::set-output name=platform_suffix::${ARCH_SUFFIX,,}"
+
+      # Log into dockerhub
+      - name: Login to DockerHub
+        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          password: ${{ secrets.dockerhub_token }}
+
+      # Log into ghcr.io
+      - name: Login to GitHub Container Registry
+        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
+          password: ${{ secrets.ghcr_token }}
+
+      # Set up QEMU for multi-arch builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      # Set up buildx
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      # Cache build of image & get image version from build output
+      - name: Cache build of image
+        id: cache_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}
+          platforms: ${{ matrix.platform }}
+          tags: cached_build:${{ steps.platform_suffix.outputs.platform_suffix }}
+          load: true
+
+      # Determine image version
+      - name: Determine image version
+        if: ${{ needs.workflows_env.outputs.build_version_specific }}
+        id: image_version
+        run: |
+          set -x
+          VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} /IMAGE_VERSION)
+          if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
+            echo "::warning title=${{ matrix.platform }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::set-output name=build_version_specific::false"
+          else
+            echo "::set-output name=build_version_specific::true"
+            echo "::set-output name=image_version::${VERSION_FROM_IMAGE}"
+          fi
+
+      # Determine image names/tags
+      - name: Determine image names/tags
+        id: image_names_tags
+        run: |
+          set -x
+          IMAGE_NAMES=()
+          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
+            IMAGE_NAMES+=("test_build")
+          fi
+          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
+          echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
+          IMAGE_TAGS=()
+          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
+          fi
+          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+            IMAGE_TAGS+=("latest_${{ steps.platform_suffix.outputs.platform_suffix }}")
+          fi
+          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
+          echo "::set-output name=tags::${IMAGE_TAGS_CSV::-1}"
+          IMAGE_FULL_TAGS=()
+          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
+            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
+              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
+            done
+          done
+          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
+          echo "::set-output name=full_name_tags::${IMAGE_FULL_TAGS_CSV::-1}"
+
+      # Get metadata from repo
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ steps.image_names_tags.outputs.names }}
+
+      # Push final image
+      - name: Build & Push Final Image
+        id: final_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}
+          platforms: ${{ matrix.platform }}
+          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ needs.workflows_env.outputs.push_enabled }}
+
+      # Report images
+      - name: Log images built & pushed
+        if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
+        run: |
+          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+
+  build:
+    name: Build (manifest)
+    if: ${{ needs.workflows_env.outputs.build_multi_arch }}
+    runs-on: ubuntu-latest
+    needs: [workflows_env]
+
+    steps:
+
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Log into dockerhub
+      - name: Login to DockerHub
+        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          password: ${{ secrets.dockerhub_token }}
+
+      # Log into ghcr.io
+      - name: Login to GitHub Container Registry
+        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
+          password: ${{ secrets.ghcr_token }}
+
+      # Set up QEMU for multi-arch builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      # Set up buildx
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      # Cache build of linux/amd64 image & get image version from build output
+      - name: Cache build of image
+        id: cache_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}
+          platforms: linux/amd64
+          tags: cached_build:latest
+          load: true
+
+      # Determine image version
+      - name: Determine image version
+        if: ${{ needs.workflows_env.outputs.build_version_specific }}
+        id: image_version
+        run: |
+          set -x
+          VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
+          if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
+            echo "::warning title=No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::set-output name=build_version_specific::false"
+          else
+            echo "::set-output name=build_version_specific::true"
+            echo "::set-output name=image_version::${VERSION_FROM_IMAGE}"
+          fi
+
+      # Determine image names/tags
+      - name: Determine image names/tags
+        id: image_names_tags
+        run: |
+          set -x
+          IMAGE_NAMES=()
+          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
+            IMAGE_NAMES+=("test_build")
+          fi
+          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
+          echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
+          IMAGE_TAGS=()
+          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}")
+          fi
+          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+            IMAGE_TAGS+=("latest")
+          fi
+          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
+          echo "::set-output name=tags::${IMAGE_TAGS_CSV::-1}"
+          IMAGE_FULL_TAGS=()
+          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
+            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
+              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
+            done
+          done
+          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
+          echo "::set-output name=full_name_tags::${IMAGE_FULL_TAGS_CSV::-1}"
+
+      # Get metadata from repo
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ steps.image_names_tags.outputs.names }}
+
+      # Build & push final images
+      - name: Build & Push Final Image
+        id: final_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}
+          platforms: ${{ needs.workflows_env.outputs.platforms_csv }}
+          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ needs.workflows_env.outputs.push_enabled }}
+
+      # Report images
+      - name: Log images built & pushed
+        if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
+        run: |
+          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
