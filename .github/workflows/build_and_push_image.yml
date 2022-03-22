@@ -34,6 +34,11 @@ on:
         required: false
         type: string
         default: ''
+      dockerhub_username:
+        description: "The dockerhub username. If not given, will revert to dockerhub_profile"
+        required: false
+        type: string
+        default: ''
       ghcr_repo_owner:
         description: "The github username/profile/organisation the repo to be pushed to belongs to"
         required: false
@@ -117,6 +122,7 @@ jobs:
       output_ghcr_io_enabled: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled }}
       dockerhub_profile: ${{ steps.workflow_env_dockerhub_profile.outputs.dockerhub_profile }}
       dockerhub_repo: ${{ steps.workflow_env_dockerhub_repo.outputs.dockerhub_repo }}
+      dockerhub_username: ${{ steps.workflow_env_dockerhub_username.outputs.dockerhub_username }}
       ghcr_repo: ${{ steps.workflow_env_ghcr_repo.outputs.ghcr_repo}}
       ghcr_repo_owner: ${{ steps.workflow_env_ghcr_repo_owner.outputs.ghcr_repo_owner}}
       platform_linux_arm32v6_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}
@@ -192,6 +198,25 @@ jobs:
             echo "::set-output name=dockerhub_profile::$DOCKERHUB_PROFILE"
           else
             echo "::error title=Environment variable invalid::DOCKERHUB_PROFILE is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable dockerhub_username
+      - name: "check 'dockerhub_username'"
+        id: workflow_env_dockerhub_username
+        if: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled == 'true' }}
+        env:
+          DOCKERHUB_USERNAME: ${{ inputs.dockerhub_username }}
+          DOCKERHUB_PROFILE: ${{ steps.workflow_env_dockerhub_profile.outputs.dockerhub_profile }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${DOCKERHUB_USERNAME}" ]]; then
+            echo "::set-output name=dockerhub_username::$DOCKERHUB_USERNAME"
+          elif [[ -n "${DOCKERHUB_PROFILE}" ]]; then
+            echo "::set-output name=dockerhub_username::$DOCKERHUB_PROFILE"
+          else
+            echo "::error title=Environment variables invalid::dockerhub_username and dockerhub_profile are empty"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -419,7 +444,7 @@ jobs:
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
         uses: docker/login-action@v1
         with:
-          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
 
       # Log into ghcr.io
@@ -545,7 +570,7 @@ jobs:
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
         uses: docker/login-action@v1
         with:
-          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
 
       # Log into ghcr.io
@@ -685,7 +710,7 @@ jobs:
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
         uses: docker/login-action@v1
         with:
-          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
 
       # Log into ghcr.io
@@ -831,7 +856,7 @@ jobs:
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
         uses: docker/login-action@v1
         with:
-          username: ${{ needs.workflows_env.outputs.dockerhub_profile }}
+          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
 
       # Log into ghcr.io

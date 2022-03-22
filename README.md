@@ -38,6 +38,7 @@ jobs:
 | `push_enabled` | Set to `true` to push the image | `false` | `false` |
 | `push_destinations` | Expects `;` separated list containing one or more of `ghcr.io`, `dockerhub` | `false` | `ghcr.io` |
 | `dockerhub_profile` | The dockerhub username/profile/organisation the image should be pushed to | `false` | |
+| `dockerhub_username` | The dockerhub username (if different to `dockerhub_profile`). If not given, reverts to `dockerhub_profile` | |
 | `dockerhub_repo` | The dockerhub repository the image should be pushed to | `false` | |
 | `ghcr_repo_owner` | The github username/profile/organisation the repo to be pushed to belongs to | `false` | |
 | `ghcr_repo` | The ghcr.io repository the image should be pushed to | `false` | |
