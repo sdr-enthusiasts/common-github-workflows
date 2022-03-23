@@ -531,7 +531,7 @@ jobs:
           esac
 
           if [[ -z "${VERSION}" ]]; then
-            echo "::warning title=${{ github.job }}: ${{ matrix.platform }}: No image version::No image version output returned, cannot build version specific images"
+            echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image version::No image version output returned, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -596,7 +596,7 @@ jobs:
       - name: Log images built & pushed
         if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
         run: |
-          echo "::notice title=${{ github.job }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.job }} (${{ matrix.platform }}): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
 
   build:
     name: Build (manifest)
@@ -657,7 +657,7 @@ jobs:
           set -x
           VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
           if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=${{ github.job }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::warning title=${{ github.job }} (manifest): No image_version returned::No image_version output returned from build, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -722,7 +722,7 @@ jobs:
       - name: Log images built & pushed
         if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
         run: |
-          echo "::notice title=${{ github.job }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.job }} (manifest): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
 
   build_platform_specific_nohealthcheck:
     name: Build nohealthcheck
@@ -809,7 +809,7 @@ jobs:
           set -x
           VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} /IMAGE_VERSION)
           if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=${{ github.job }}: ${{ matrix.platform }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image_version returned::No image_version output returned from build, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -879,7 +879,7 @@ jobs:
           needs.workflows_env.outputs.push_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
         run: |
-          echo "::notice title=${{ github.job }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.job }} (${{ matrix.platform }}): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
 
   build_nohealthcheck:
     name: Build nohealthcheck (manifest)
@@ -955,7 +955,7 @@ jobs:
           set -x
           VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
           if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=${{ github.job }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::warning title=${{ github.job }} (manifest): No image_version returned::No image_version output returned from build, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -1025,4 +1025,4 @@ jobs:
           needs.workflows_env.outputs.push_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
         run: |
-          echo "::notice title=${{ github.job }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.job }} (manifest): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
