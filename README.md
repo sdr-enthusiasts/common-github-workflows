@@ -77,6 +77,15 @@ The syntax above will read the contents of the file `/IMAGE_VERSION` after the i
 
 Takes no arguments. Will use the first 7 characters from the git commit hash. This is retrieved by running `git rev-parse HEAD` on the checked-out repository.
 
+Example:
+
+```yaml
+  build_and_push:
+    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+    with:
+      get_version_method: git_commit_hash_short
+```
+
 ### Secrets
 
 | Input | Description |
