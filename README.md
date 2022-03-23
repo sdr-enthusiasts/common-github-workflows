@@ -2,6 +2,15 @@
 
 Common GitHub workflows used by sdr-enthusiasts' CI/CD workflows.
 
+* [common-github-workflows](#common-github-workflows)
+  * [Build & Push Docker Images](#build--push-docker-images)
+    * [Example](#example)
+    * [Inputs](#inputs)
+      * [`get_version_method`](#get_version_method)
+        * [Method: `file_in_container`](#method-file_in_container)
+        * [Method: `git_commit_hash_short`](#method-git_commit_hash_short)
+    * [Secrets](#secrets)
+
 ## Build & Push Docker Images
 
 This action will perform a build & push of docker images.
