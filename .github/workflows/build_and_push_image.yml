@@ -165,7 +165,7 @@ jobs:
           elif [[ "${PUSH_ENABLED,,}" == "false" ]]; then
             echo "::set-output name=push_enabled::false"
           else
-            echo "::error title=Environment variable invalid::push_enabled should be 'true' or 'false'"
+            echo "::error title=${{ github.action }}: Environment variable invalid::push_enabled should be 'true' or 'false'"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -187,7 +187,7 @@ jobs:
             elif [[ "${PUSH_DESTINATION,,}" == 'dockerhub' ]]; then
               echo "::set-output name=dockerhub_enabled::true"
             else
-              echo "::error title=Environment variable invalid::push_destinations includes '$PUSH_DESTINATION'. Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
+              echo "::error title=${{ github.action }}: Environment variable invalid::push_destinations includes '$PUSH_DESTINATION'. Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
               FAIL_STEP=1
             fi
           done
@@ -204,7 +204,7 @@ jobs:
           if [[ -n "${DOCKERHUB_PROFILE}" ]]; then
             echo "::set-output name=dockerhub_profile::$DOCKERHUB_PROFILE"
           else
-            echo "::error title=Environment variable invalid::DOCKERHUB_PROFILE is empty"
+            echo "::error title=${{ github.action }}: Environment variable invalid::DOCKERHUB_PROFILE is empty"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -223,7 +223,7 @@ jobs:
           elif [[ -n "${DOCKERHUB_PROFILE}" ]]; then
             echo "::set-output name=dockerhub_username::$DOCKERHUB_PROFILE"
           else
-            echo "::error title=Environment variables invalid::dockerhub_username and dockerhub_profile are empty"
+            echo "::error title=${{ github.action }}: Environment variables invalid::dockerhub_username and dockerhub_profile are empty"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -239,7 +239,7 @@ jobs:
           if [[ -n "${DOCKERHUB_REPO}" ]]; then
             echo "::set-output name=dockerhub_repo::$DOCKERHUB_REPO"
           else
-            echo "::error title=Environment variable invalid::dockerhub_repo is empty"
+            echo "::error title=${{ github.action }}: Environment variable invalid::dockerhub_repo is empty"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -255,7 +255,7 @@ jobs:
           if [[ -n "${GHCR_REPO}" ]]; then
             echo "::set-output name=ghcr_repo::$GHCR_REPO"
           else
-            echo "::error title=Environment variable invalid::ghcr_repo is empty"
+            echo "::error title=${{ github.action }}: Environment variable invalid::ghcr_repo is empty"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -271,7 +271,7 @@ jobs:
           if [[ -n "${GHCR_REPO_OWNER}" ]]; then
             echo "::set-output name=ghcr_repo_owner::$GHCR_REPO_OWNER"
           else
-            echo "::error title=Environment variable invalid::ghcr_repo_owner is empty"
+            echo "::error title=${{ github.action }}: Environment variable invalid::ghcr_repo_owner is empty"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -310,7 +310,7 @@ jobs:
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "$NUM_ARCHES" -le 0 ]]; then
-            echo "::error title=Environment variable invalid::platform_<platform>_enabled need at least one platform enabled"
+            echo "::error title=${{ github.action }}: Environment variable invalid::platform_<platform>_enabled need at least one platform enabled"
             FAIL_STEP=1
           fi
           exit $FAIL_STEP
@@ -404,7 +404,7 @@ jobs:
               if [[ -n "$FILENAME" ]]; then
                 echo "::set-output name=file_in_container::$FILENAME"
               else
-                echo "::error title=Environment variable invalid::file_in_container method requires valid 'file=' argument"
+                echo "::error title=${{ github.action }}: Environment variable invalid::file_in_container method requires valid 'file=' argument"
                 FAIL_STEP=1
               fi
               ;;
@@ -412,7 +412,7 @@ jobs:
               echo "::set-output name=method::git_commit_hash_short"
               ;;
             *)
-              echo "::error title=Environment variable invalid::'$METHOD' method is unsupported. See documentation."
+              echo "::error title=${{ github.action }}: Environment variable invalid::'$METHOD' method is unsupported. See documentation."
               FAIL_STEP=1
               ;;
           esac
@@ -443,13 +443,13 @@ jobs:
             echo "::set-output name=context::${DOCKER_BUILD_CONTEXT}"
           else
             FAIL_STEP=1
-            echo "::error title=Environment variable invalid::DOCKER_BUILD_CONTEXT is empty"
+            echo "::error title=${{ github.action }}: Environment variable invalid::DOCKER_BUILD_CONTEXT is empty"
           fi
           if [[ -n "${DOCKER_BUILD_FILE}" ]]; then
             echo "::set-output name=file::${DOCKER_BUILD_FILE}"
           else
             FAIL_STEP=1
-            echo "::error title=Environment variable invalid::DOCKER_BUILD_FILE is empty"
+            echo "::error title=${{ github.action }}: Environment variable invalid::DOCKER_BUILD_FILE is empty"
           fi
           exit $FAIL_STEP
 
@@ -531,7 +531,7 @@ jobs:
           esac
 
           if [[ -z "${VERSION}" ]]; then
-            echo "::warning title=${{ matrix.platform }}: No image version::No image version output returned, cannot build version specific images"
+            echo "::warning title=${{ github.action }}: ${{ matrix.platform }}: No image version::No image version output returned, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -596,7 +596,7 @@ jobs:
       - name: Log images built & pushed
         if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
         run: |
-          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.action }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
 
   build:
     name: Build (manifest)
@@ -657,7 +657,7 @@ jobs:
           set -x
           VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
           if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::warning title=${{ github.action }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -722,7 +722,7 @@ jobs:
       - name: Log images built & pushed
         if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
         run: |
-          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.action }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
 
   build_platform_specific_nohealthcheck:
     name: Build nohealthcheck
@@ -809,7 +809,7 @@ jobs:
           set -x
           VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} /IMAGE_VERSION)
           if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=${{ matrix.platform }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::warning title=${{ github.action }}: ${{ matrix.platform }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -879,7 +879,7 @@ jobs:
           needs.workflows_env.outputs.push_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
         run: |
-          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.action }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
 
   build_nohealthcheck:
     name: Build nohealthcheck (manifest)
@@ -955,7 +955,7 @@ jobs:
           set -x
           VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
           if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=No image_version returned::No image_version output returned from build, cannot build version specific images"
+            echo "::warning title=${{ github.action }}: No image_version returned::No image_version output returned from build, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
@@ -1025,4 +1025,4 @@ jobs:
           needs.workflows_env.outputs.push_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
         run: |
-          echo "::notice title=Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
+          echo "::notice title=${{ github.action }}: Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
