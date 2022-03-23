@@ -12,7 +12,8 @@ on:
 
 jobs:
 
-  test_build_only:
+  build_only_version_file_in_container:
+    name: "Build only, version: file_in_container"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
@@ -21,10 +22,26 @@ jobs:
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
       build_nohealthcheck: false
+      get_version_method: file_in_container:file=/IMAGE_VERSION
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_push:
+  build_only_version_git_commit_hash_short:
+    name: "Build only, version: git_commit_hash_short"
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: false
+      ghcr_repo_owner: ${{ github.repository_owner }}
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: git_commit_hash_short
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_push_version_file_in_container:
+    name: "Build & Push, version: file_in_container"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: true
@@ -36,7 +53,22 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_only_nohealthcheck:
+  build_push_version_git_commit_hash_short:
+    name: "Build & Push, version: git_commit_hash_short"
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: true
+      ghcr_repo_owner: ${{ github.repository_owner }}
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: git_commit_hash_short
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_only_nohealthcheck:
+    name: "Build only, nohealthcheck"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
@@ -47,8 +79,9 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_push_nohealthcheck:
+  build_push_nohealthcheck:
     uses: ./.github/workflows/build_and_push_image.yml
+    name: "Build & Push, nohealthcheck"
     with:
       push_enabled: true
       ghcr_repo_owner: ${{ github.repository_owner }}

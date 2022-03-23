@@ -51,7 +51,31 @@ jobs:
 | `build_platform_specific` | Set to `true` to also build platform specific images | `false` | `true` |
 | `build_latest` | Set to `true` to include a latest tag | `false` | `true` |
 | `build_version_specific` | Set to `true` to include a version tag | `false` | `true` |
+| `get_version_method` | See below | `false` | `file_in_container:file=/IMAGE_VERSION` |
 | `build_nohealthcheck` | Set to true to build a nohealthcheck version | `false` | `true` |
+
+#### `get_version_method`
+
+The syntax is `method[:argument=value]`
+
+##### Method: `file_in_container`
+
+Takes argument `file`, pointing to a file inside the image. This file does not need to exist in the image before it is built (ie: it can be generated during the build process).
+
+Example:
+
+```yaml
+  build_and_push:
+    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+    with:
+      get_version_method: file_in_container:file=/IMAGE_VERSION
+```
+
+The syntax above will read the contents of the file `/IMAGE_VERSION` after the image is built.
+
+##### Method: `git_commit_hash_short`
+
+Takes no arguments. Will use the first 7 characters from the git commit hash. This is retrieved by running `git rev-parse HEAD` on the checked-out repository.
 
 ### Secrets
 
