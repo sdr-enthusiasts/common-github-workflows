@@ -52,7 +52,7 @@ jobs:
       build_nohealthcheck: false
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-  
+
   build_push_version_git_commit_hash_short:
     name: "Build & Push, version: git_commit_hash_short"
     uses: ./.github/workflows/build_and_push_image.yml
