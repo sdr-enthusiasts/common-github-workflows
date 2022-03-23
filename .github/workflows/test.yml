@@ -12,7 +12,7 @@ on:
 
 jobs:
 
-  test_build_only:
+  test_build_only_version_from_file_in_container:
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
@@ -24,7 +24,20 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_push:
+  test_build_only_version_from_git_commit_hash_short:
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: false
+      ghcr_repo_owner: ${{ github.repository_owner }}
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: git_commit_hash_short
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  test_build_push_version_from_file_in_container:
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: true
@@ -33,6 +46,19 @@ jobs:
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
       build_nohealthcheck: false
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+  
+  test_build_push_version_from_git_commit_hash_short:
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: true
+      ghcr_repo_owner: ${{ github.repository_owner }}
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: git_commit_hash_short
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
