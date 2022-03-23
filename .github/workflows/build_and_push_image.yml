@@ -94,6 +94,11 @@ on:
         type: boolean
         required: false
         default: true
+      get_version_method:
+        description: 'The method to get the version of the image'
+        type: string
+        required: false
+        default: 'file_in_container:file=/IMAGE_VERSION'
       build_nohealthcheck:
         description: 'Set to true to build a nohealthcheck version'
         type: boolean
@@ -380,6 +385,34 @@ jobs:
           fi
           exit $FAIL_STEP
       
+      - name: "check 'get_version_method'"
+        id: workflow_env_get_version_method
+        if: steps.workflow_env_build_version_specific.outputs.build_version_specific == 'true'
+        env:
+          GET_VERSION_METHOD: ${{ inputs.get_version_method }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          METHOD=$(echo "$GET_VERSION_METHOD" | cut -d ":" -f 1)
+          ARGS=$(echo "$GET_VERSION_METHOD" | cut -d ":" -f 2-)
+          case "${METHOD,,}" in
+            file_in_container)
+              echo "::set-output name=method::file_in_container"
+              FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
+              if [[ -n "$FILENAME" ]]; then
+                echo "::set-output name=file::$FILENAME"
+              else
+                echo "::error title=Environment variable invalid::file_in_container method requires valid 'file=' argument"
+                FAIL_STEP=1
+              fi
+              ;;
+            *)
+              echo "::error title=Environment variable invalid::'$METHOD' method is unsupported. See documentation."
+              FAIL_STEP=1
+              ;;
+          esac
+          exit $FAIL_STEP
+          
       - name: "check 'build_nohealthcheck'"
         id: workflow_env_build_nohealthcheck
         env:
