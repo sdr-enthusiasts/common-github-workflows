@@ -1,8 +1,8 @@
-# common-github-workflows
+# sdr-enthusiasts/common-github-workflows
 
 Common GitHub workflows used by sdr-enthusiasts' CI/CD workflows.
 
-* [common-github-workflows](#common-github-workflows)
+* [sdr-enthusiasts/common-github-workflows](#sdr-enthusiastscommon-github-workflows)
   * [Build & Push Docker Images](#build--push-docker-images)
     * [Example](#example)
     * [Inputs](#inputs)
