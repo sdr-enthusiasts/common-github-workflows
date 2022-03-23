@@ -12,7 +12,8 @@ on:
 
 jobs:
 
-  test_build_only_version_from_file_in_container:
+  build_only_version_file_in_container:
+    name: "Build only, version: file_in_container"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
@@ -24,7 +25,8 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_only_version_from_git_commit_hash_short:
+  build_only_version_git_commit_hash_short:
+    name: "Build only, version: git_commit_hash_short"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
@@ -37,7 +39,8 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_push_version_from_file_in_container:
+  build_push_version_file_in_container:
+    name: "Build & Push, version: file_in_container"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: true
@@ -49,7 +52,8 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
   
-  test_build_push_version_from_git_commit_hash_short:
+  build_push_version_git_commit_hash_short:
+    name: "Build & Push, version: git_commit_hash_short"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: true
@@ -62,7 +66,8 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_only_nohealthcheck:
+  build_only_nohealthcheck:
+    name: "Build only, nohealthcheck"
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
@@ -73,8 +78,9 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  test_build_push_nohealthcheck:
+  build_push_nohealthcheck:
     uses: ./.github/workflows/build_and_push_image.yml
+    name: "Build & Push, nohealthcheck"
     with:
       push_enabled: true
       ghcr_repo_owner: ${{ github.repository_owner }}
