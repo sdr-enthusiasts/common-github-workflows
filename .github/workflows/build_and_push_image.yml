@@ -655,13 +655,21 @@ jobs:
         id: image_version
         run: |
           set -x
-          VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
-          if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=${{ github.job }} (manifest): No image_version returned::No image_version output returned from build, cannot build version specific images"
+          case "${{ needs.workflows_env.outputs.get_version_method }}" in
+            file_in_container)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
+              ;;
+            git_commit_hash_short)
+              GIT_HEAD=$(git rev-parse HEAD)
+              VERSION="${GIT_HEAD::7}"
+              ;;
+          esac
+          if [[ -z "${VERSION}" ]]; then
+            echo "::warning title=${{ github.job }} (manifest): No image version::No image version output returned, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
-            echo "::set-output name=image_version::${VERSION_FROM_IMAGE}"
+            echo "::set-output name=image_version::${VERSION}"
           fi
 
       # Determine image names/tags
@@ -807,13 +815,21 @@ jobs:
         id: image_version
         run: |
           set -x
-          VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} /IMAGE_VERSION)
-          if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image_version returned::No image_version output returned from build, cannot build version specific images"
+          case "${{ needs.workflows_env.outputs.get_version_method }}" in
+            file_in_container)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
+              ;;
+            git_commit_hash_short)
+              GIT_HEAD=$(git rev-parse HEAD)
+              VERSION="${GIT_HEAD::7}"
+              ;;
+          esac
+          if [[ -z "${VERSION}" ]]; then
+            echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image version::No image version output returned, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
-            echo "::set-output name=image_version::${VERSION_FROM_IMAGE}"
+            echo "::set-output name=image_version::${VERSION}"
           fi
 
       # Determine image names/tags
@@ -953,13 +969,21 @@ jobs:
         id: image_version
         run: |
           set -x
-          VERSION_FROM_IMAGE=$(docker run --rm --entrypoint cat cached_build:latest /IMAGE_VERSION)
-          if [[ -z "${VERSION_FROM_IMAGE}" ]]; then
-            echo "::warning title=${{ github.job }} (manifest): No image_version returned::No image_version output returned from build, cannot build version specific images"
+          case "${{ needs.workflows_env.outputs.get_version_method }}" in
+            file_in_container)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
+              ;;
+            git_commit_hash_short)
+              GIT_HEAD=$(git rev-parse HEAD)
+              VERSION="${GIT_HEAD::7}"
+              ;;
+          esac
+          if [[ -z "${VERSION}" ]]; then
+            echo "::warning title=${{ github.job }} (manifest): No image version::No image version output returned, cannot build version specific images"
             echo "::set-output name=build_version_specific::false"
           else
             echo "::set-output name=build_version_specific::true"
-            echo "::set-output name=image_version::${VERSION_FROM_IMAGE}"
+            echo "::set-output name=image_version::${VERSION}"
           fi
 
       # Determine image names/tags
