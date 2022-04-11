@@ -24,7 +24,7 @@ jobs:
       build_nohealthcheck: false
       get_version_method: file_in_container:file=/IMAGE_VERSION
     secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+      ghcr_token: ${{ secrets.GH_PAT_MIKENYE }}
 
   build_only_version_git_commit_hash_short:
     name: "Build only, version: git_commit_hash_short"
@@ -38,7 +38,7 @@ jobs:
       build_nohealthcheck: false
       get_version_method: git_commit_hash_short
     secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+      ghcr_token: ${{ secrets.GH_PAT_MIKENYE }}
 
   build_push_version_file_in_container:
     name: "Build & Push, version: file_in_container"
@@ -51,7 +51,7 @@ jobs:
       platform_linux_i386_enabled: true
       build_nohealthcheck: false
     secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+      ghcr_token: ${{ secrets.GH_PAT_MIKENYE }}
 
   build_push_version_git_commit_hash_short:
     name: "Build & Push, version: git_commit_hash_short"
@@ -65,7 +65,7 @@ jobs:
       build_nohealthcheck: false
       get_version_method: git_commit_hash_short
     secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+      ghcr_token: ${{ secrets.GH_PAT_MIKENYE }}
 
   build_only_nohealthcheck:
     name: "Build only, nohealthcheck"
@@ -77,7 +77,7 @@ jobs:
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
     secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+      ghcr_token: ${{ secrets.GH_PAT_MIKENYE }}
 
   build_push_nohealthcheck:
     uses: ./.github/workflows/build_and_push_image.yml
@@ -89,4 +89,4 @@ jobs:
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
     secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+      ghcr_token: ${{ secrets.GH_PAT_MIKENYE }}
