@@ -17,7 +17,7 @@ jobs:
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
-      ghcr_repo_owner: ${{ github.actor }}
+      ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
@@ -31,7 +31,7 @@ jobs:
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
-      ghcr_repo_owner: ${{ github.actor }}
+      ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
@@ -45,7 +45,7 @@ jobs:
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: true
-      ghcr_repo_owner: ${{ github.actor }}
+      ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
@@ -58,7 +58,7 @@ jobs:
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: true
-      ghcr_repo_owner: ${{ github.actor }}
+      ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
@@ -72,7 +72,7 @@ jobs:
     uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
-      ghcr_repo_owner: ${{ github.actor }}
+      ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
@@ -84,7 +84,7 @@ jobs:
     name: "Build & Push, nohealthcheck"
     with:
       push_enabled: true
-      ghcr_repo_owner: ${{ github.actor }}
+      ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
