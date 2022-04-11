@@ -253,7 +253,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${GHCR_REPO}" ]]; then
-            echo "::set-output name=ghcr_repo::$GHCR_REPO"
+            echo "::set-output name=ghcr_repo::${GHCR_REPO,,}"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo is empty"
             FAIL_STEP=1
@@ -269,7 +269,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${GHCR_REPO_OWNER}" ]]; then
-            echo "::set-output name=ghcr_repo_owner::$GHCR_REPO_OWNER"
+            echo "::set-output name=ghcr_repo_owner::${GHCR_REPO_OWNER,,}"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo_owner is empty"
             FAIL_STEP=1
@@ -548,7 +548,7 @@ jobs:
             IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
             IMAGE_NAMES+=("test_build")
@@ -682,7 +682,7 @@ jobs:
             IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
             IMAGE_NAMES+=("test_build")
@@ -843,7 +843,7 @@ jobs:
             IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
             IMAGE_NAMES+=("test_build")
@@ -997,7 +997,7 @@ jobs:
             IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("ghcr.io/${{ github.repository }}")
+            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
             IMAGE_NAMES+=("test_build")
