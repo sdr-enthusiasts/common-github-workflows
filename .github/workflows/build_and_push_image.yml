@@ -5,17 +5,17 @@ on:
   workflow_call:
     inputs:
       docker_build_context:
-        description: 'Path to docker build context'
+        description: "Path to docker build context"
         required: false
         type: string
-        default: '.'
+        default: "."
       docker_build_file:
-        description: 'Path to the dockerfile within docker_build_context'
+        description: "Path to the dockerfile within docker_build_context"
         required: false
         type: string
-        default: './Dockerfile'
+        default: "./Dockerfile"
       push_enabled:
-        description: 'Set to true to push the image'
+        description: "Set to true to push the image"
         type: boolean
         required: false
         default: false
@@ -23,87 +23,92 @@ on:
         description: "Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
         required: false
         type: string
-        default: 'ghcr.io'
+        default: "ghcr.io"
       dockerhub_profile:
         description: "The dockerhub username/profile/organisation the image should be pushed to"
         required: false
         type: string
-        default: ''
+        default: ""
       dockerhub_repo:
         description: "The dockerhub repository the image should be pushed to"
         required: false
         type: string
-        default: ''
+        default: ""
       dockerhub_username:
         description: "The dockerhub username. If not given, will revert to dockerhub_profile"
         required: false
         type: string
-        default: ''
+        default: ""
       ghcr_repo_owner:
         description: "The github username/profile/organisation the repo to be pushed to belongs to"
         required: false
         type: string
-        default: ''
+        default: ""
       ghcr_repo:
         description: "The ghcr.io repository the image should be pushed to"
         required: false
         type: string
-        default: ''
+        default: ""
       platform_linux_arm32v6_enabled:
-        description: 'Set to true to build for the linux/arm/v6 platform'
+        description: "Set to true to build for the linux/arm/v6 platform"
         type: boolean
         required: false
         default: false
       platform_linux_arm32v7_enabled:
-        description: 'Set to true to build for the linux/arm/v7 platform'
+        description: "Set to true to build for the linux/arm/v7 platform"
         type: boolean
         required: false
         default: true
       platform_linux_arm64v8_enabled:
-        description: 'Set to true to build for the linux/arm64 platform'
+        description: "Set to true to build for the linux/arm64 platform"
         type: boolean
         required: false
         default: true
       platform_linux_amd64_enabled:
-        description: 'Set to true to build for the linux/amd64 platform'
+        description: "Set to true to build for the linux/amd64 platform"
         type: boolean
         required: false
         default: true
       platform_linux_i386_enabled:
-        description: 'Set to true to build for the linux/i386 platform'
+        description: "Set to true to build for the linux/i386 platform"
         type: boolean
         required: false
         default: false
       build_enabled:
-        description: 'Set to true to build images'
+        description: "Set to true to build images"
         type: boolean
         required: false
         default: true
       build_platform_specific:
-        description: 'Set to true to also build platform specific images'
+        description: "Set to true to also build platform specific images"
         type: boolean
         required: false
         default: true
       build_latest:
-        description: 'Set to true to include a latest tag'
+        description: "Set to true to include a latest tag"
         type: boolean
         required: false
         default: true
       build_version_specific:
-        description: 'Set to true to include a version tag'
+        description: "Set to true to include a version tag"
         type: boolean
         required: false
         default: true
       get_version_method:
-        description: 'The method to get the version of the image'
+        description: "The method to get the version of the image"
         type: string
         required: false
-        default: 'file_in_container:file=/IMAGE_VERSION'
+        default: "file_in_container:file=/IMAGE_VERSION"
       build_nohealthcheck:
-        description: 'Set to true to build a nohealthcheck version'
+        description: "Set to true to build a nohealthcheck version"
         type: boolean
         required: false
         default: true
+      build_with_tmpfs:
+        description: "Set to true to build with tmpfs"
+        type: boolean
+        required: false
+        default: false
 
     secrets:
       dockerhub_token:
@@ -114,7 +119,6 @@ on:
         required: false
 
 jobs:
-
   workflows_env:
     name: Prepare workflow environment
     runs-on: ubuntu-latest
@@ -144,9 +148,9 @@ jobs:
       get_version_method: ${{ steps.workflow_env_get_version_method.outputs.method }}
       get_version_method_file_in_container: ${{ steps.workflow_env_get_version_method.outputs.file_in_container }}
       build_nohealthcheck: ${{ steps.workflow_env_build_nohealthcheck.outputs.build_nohealthcheck }}
+      build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
 
     steps:
-
       # Check out code
       - name: Checkout
         uses: actions/checkout@v3
@@ -453,16 +457,33 @@ jobs:
           fi
           exit $FAIL_STEP
 
+      # check for import enviornment variables build_with_tmpfs
+      - name: "check 'build_with_tmpfs'"
+        id: workflow_env_build_with_tmpfs
+        env:
+          BUILD_WITH_TMPFS: ${{ inputs.build_with_tmpfs }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_WITH_TMPFS,,}" == "true" ]]; then
+            echo "::set-output name=build_with_tmpfs::true"
+          fi
+          exit $FAIL_STEP
+
   build_platform_specific:
     name: Build
     if: ${{ needs.workflows_env.outputs.build_single_arch }}
     runs-on: ubuntu-latest
-    needs: [workflows_env, build_nohealthcheck, build_platform_specific_nohealthcheck]
+    needs:
+      [
+        workflows_env,
+        build_nohealthcheck,
+        build_platform_specific_nohealthcheck,
+      ]
     strategy:
       matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
 
     steps:
-
       # Check out code
       - name: Checkout
         uses: actions/checkout@v3
@@ -493,6 +514,14 @@ jobs:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
           password: ${{ secrets.ghcr_token }}
+
+      - name: Run Docker on tmpfs
+        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
+        uses: JonasAlfredsson/docker-on-tmpfs@v1
+        with:
+          tmpfs_size: 5
+          swap_size: 4
+          swap_location: "/mnt/swapfile"
 
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
@@ -602,10 +631,14 @@ jobs:
     name: Build (manifest)
     if: ${{ needs.workflows_env.outputs.build_multi_arch }}
     runs-on: ubuntu-latest
-    needs: [workflows_env, build_nohealthcheck, build_platform_specific_nohealthcheck]
+    needs:
+      [
+        workflows_env,
+        build_nohealthcheck,
+        build_platform_specific_nohealthcheck,
+      ]
 
     steps:
-
       # Check out code
       - name: Checkout
         uses: actions/checkout@v3
@@ -632,6 +665,14 @@ jobs:
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
+
+      - name: Run Docker on tmpfs
+        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
+        uses: JonasAlfredsson/docker-on-tmpfs@v1
+        with:
+          tmpfs_size: 5
+          swap_size: 4
+          swap_location: "/mnt/swapfile"
 
       # Set up buildx
       - name: Set up Docker Buildx
@@ -741,7 +782,6 @@ jobs:
       matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
 
     steps:
-
       # Check out code
       - name: Checkout
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
@@ -778,6 +818,14 @@ jobs:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
           password: ${{ secrets.ghcr_token }}
+
+      - name: Run Docker on tmpfs
+        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
+        uses: JonasAlfredsson/docker-on-tmpfs@v1
+        with:
+          tmpfs_size: 5
+          swap_size: 4
+          swap_location: "/mnt/swapfile"
 
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
@@ -904,7 +952,6 @@ jobs:
     needs: [workflows_env]
 
     steps:
-
       # Check out code
       - name: Checkout
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
@@ -932,6 +979,14 @@ jobs:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
           password: ${{ secrets.ghcr_token }}
+
+      - name: Run Docker on tmpfs
+        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
+        uses: JonasAlfredsson/docker-on-tmpfs@v1
+        with:
+          tmpfs_size: 5
+          swap_size: 4
+          swap_location: "/mnt/swapfile"
 
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
