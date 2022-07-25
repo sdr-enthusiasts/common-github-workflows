@@ -8,6 +8,7 @@ Common GitHub workflows used by sdr-enthusiasts' CI/CD workflows.
     * [Inputs](#inputs)
       * [`get_version_method`](#get_version_method)
         * [Method: `cargo_toml_file_in_image`](#method-cargo_toml_file_in_image)
+        * [Method: `cargo_toml_file_in_repo`](#method-cargo_toml_file_in_repo)
         * [Method: `file_in_container`](#method-file_in_container)
         * [Method: `git_commit_hash_short`](#method-git_commit_hash_short)
     * [Secrets](#secrets)
@@ -82,6 +83,21 @@ Example:
 ```
 
 The syntax above will read the version from the `version =` directive, inside the `[package]` section of `/Cargo.toml` after the image is built.
+
+##### Method: `cargo_toml_file_in_repo`
+
+Takes argument `file`, pointing to a `Cargo.toml` file inside the repo.
+
+Example:
+
+```yaml
+  build_and_push:
+    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+    with:
+      get_version_method: cargo_toml_file_in_repo:file=/Cargo.toml
+```
+
+The syntax above will read the version from the `version =` directive, inside the `[package]` section of `/Cargo.toml` in the repo.
 
 ##### Method: `file_in_container`
 
