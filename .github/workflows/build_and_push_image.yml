@@ -711,6 +711,9 @@ jobs:
         run: |
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
+            cargo_toml)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }}) | grep '\[package\]' -A9999 | grep '^$' -B9999 | grep 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2
+              ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
               ;;
@@ -878,6 +881,9 @@ jobs:
         run: |
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
+            cargo_toml)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }}) | grep '\[package\]' -A9999 | grep '^$' -B9999 | grep 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2
+              ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
               ;;
@@ -1039,6 +1045,9 @@ jobs:
         run: |
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
+            cargo_toml)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }}) | grep '\[package\]' -A9999 | grep '^$' -B9999 | grep 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2
+              ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
               ;;
