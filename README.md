@@ -64,6 +64,7 @@ jobs:
 | `build_version_specific` | Set to `true` to include a version tag | `false` | `true` |
 | `get_version_method` | See below | `false` | `file_in_container:file=/IMAGE_VERSION` |
 | `build_nohealthcheck` | Set to true to build a nohealthcheck version | `false` | `true` |
+| `build_with_tmpfs` | Set to true to use [`docker-on-tmpfs`](https://github.com/marketplace/actions/docker-on-tmpfs) | `false` | `false` |
 
 #### `get_version_method`
 
