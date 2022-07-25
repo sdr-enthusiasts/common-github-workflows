@@ -412,6 +412,7 @@ jobs:
                 echo "::error title=${{ github.job }}: Environment variable invalid::cargo_toml method requires valid 'file=' argument"
                 FAIL_STEP=1
               fi
+              ;;
             file_in_container)
               echo "::set-output name=method::file_in_container"
               FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
@@ -562,6 +563,7 @@ jobs:
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
             cargo_toml)
               VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }}) | grep '\[package\]' -A9999 | grep '^$' -B9999 | grep 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2
+              ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
               ;;
