@@ -81,7 +81,7 @@ Example:
       get_version_method: cargo_toml:file=/Cargo.toml
 ```
 
-The syntax above will read the version from the `version = ` directive, inside the `[package]` section of `/Cargo.toml` after the image is built.
+The syntax above will read the version from the `version =` directive, inside the `[package]` section of `/Cargo.toml` after the image is built.
 
 ##### Method: `file_in_container`
 
