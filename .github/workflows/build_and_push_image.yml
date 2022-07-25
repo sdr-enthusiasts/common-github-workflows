@@ -147,7 +147,7 @@ jobs:
       build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
       get_version_method: ${{ steps.workflow_env_get_version_method.outputs.method }}
       get_version_method_file_in_container: ${{ steps.workflow_env_get_version_method.outputs.file_in_container }}
-      get_version_method_cargo_toml: ${{ steps.workflow_env_get_version_method.outputs.cargo_toml }}
+      get_version_method_cargo_toml_file_in_image: ${{ steps.workflow_env_get_version_method.outputs.cargo_toml_file_in_image }}
       build_nohealthcheck: ${{ steps.workflow_env_build_nohealthcheck.outputs.build_nohealthcheck }}
       build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
 
@@ -403,13 +403,13 @@ jobs:
           METHOD=$(echo "$GET_VERSION_METHOD" | cut -d ":" -f 1)
           ARGS=$(echo "$GET_VERSION_METHOD" | cut -d ":" -f 2-)
           case "${METHOD,,}" in
-            cargo_toml)
-              echo "::set-output name=method::cargo_toml"
+            cargo_toml_file_in_image)
+              echo "::set-output name=method::cargo_toml_file_in_image"
               FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
               if [[ -n "$FILENAME" ]]; then
-                echo "::set-output name=cargo_toml::$FILENAME"
+                echo "::set-output name=cargo_toml_file_in_image::$FILENAME"
               else
-                echo "::error title=${{ github.job }}: Environment variable invalid::cargo_toml method requires valid 'file=' argument"
+                echo "::error title=${{ github.job }}: Environment variable invalid::cargo_toml_file_in_image method requires valid 'file=' argument"
                 FAIL_STEP=1
               fi
               ;;
@@ -561,8 +561,8 @@ jobs:
         run: |
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
+            cargo_toml_file_in_image)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
               ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
@@ -711,8 +711,8 @@ jobs:
         run: |
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }} | | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
+            cargo_toml_file_in_image)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
               ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
@@ -881,8 +881,8 @@ jobs:
         run: |
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }} | | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
+            cargo_toml_file_in_image)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
               ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
@@ -1045,8 +1045,8 @@ jobs:
         run: |
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
+            cargo_toml_file_in_image)
+              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
               ;;
             file_in_container)
               VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
