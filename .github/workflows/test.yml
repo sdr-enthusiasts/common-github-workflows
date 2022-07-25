@@ -26,6 +26,34 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
+  build_only_version_cargo_toml_file_in_image:
+    name: "Build only, version: cargo_toml_file_in_image"
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: false
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_only_version_cargo_toml_file_in_repo:
+    name: "Build only, version: cargo_toml_file_in_repo"
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: false
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
   build_only_version_git_commit_hash_short:
     name: "Build only, version: git_commit_hash_short"
     uses: ./.github/workflows/build_and_push_image.yml
@@ -50,6 +78,34 @@ jobs:
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
       build_nohealthcheck: false
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_push_version_cargo_toml_file_in_image:
+    name: "Build & Push, version: cargo_toml_file_in_image"
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: true
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_push_version_cargo_toml_file_in_repo:
+    name: "Build & Push, version: cargo_toml_file_in_repo"
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: true
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_arm32v6_enabled: true
+      platform_linux_i386_enabled: true
+      build_nohealthcheck: false
+      get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
