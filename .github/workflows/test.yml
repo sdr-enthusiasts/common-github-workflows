@@ -50,7 +50,7 @@ jobs:
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
       build_nohealthcheck: false
-      get_version_method: cargo_toml_file_in_repo:file=/Cargo.toml
+      get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -94,7 +94,7 @@ jobs:
       get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-  
+
   build_push_version_cargo_toml_file_in_repo:
     name: "Build & Push, version: cargo_toml_file_in_repo"
     uses: ./.github/workflows/build_and_push_image.yml
@@ -105,7 +105,7 @@ jobs:
       platform_linux_arm32v6_enabled: true
       platform_linux_i386_enabled: true
       build_nohealthcheck: false
-      get_version_method: cargo_toml_file_in_repo:file=/Cargo.toml
+      get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
