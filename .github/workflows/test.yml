@@ -149,7 +149,6 @@ jobs:
 
   populate_cache:
     name: "Populate cache"
-    id: populate_cache
     steps:
       # Check out code
       - name: Checkout
@@ -177,7 +176,6 @@ jobs:
       cache_enabled: true
       cache_path: test_image_rootfs_cache
       cache_key: ${{ github.run_id }}
-
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
