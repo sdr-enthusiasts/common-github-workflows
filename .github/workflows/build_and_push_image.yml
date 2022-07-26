@@ -118,7 +118,7 @@ on:
         description: "The path to restore the cache to"
         type: string
         required: false
-        default: "cache/"
+        default: ""
       cache_key:
         description: "The cache key to restore"
         type: string
