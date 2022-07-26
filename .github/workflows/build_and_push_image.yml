@@ -194,7 +194,7 @@ jobs:
           else
             ls -laR "$CACHE_PATH"
           fi
-      
+
       # Check imported environment variable PUSH_ENABLED
       - name: "check 'push_enabled'"
         id: workflow_env_push_enabled
@@ -876,7 +876,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
+
       # Populate cache
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
