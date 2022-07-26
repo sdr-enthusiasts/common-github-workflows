@@ -159,7 +159,7 @@ jobs:
 
       - name: "Make some data to cache"
         run: |
-          mkdir -p ./cache/data
+          mkdir -p ./cache
           dd if=/dev/zero of=./cache/data bs=4k count=50
           ls -la ./cache/data
 
