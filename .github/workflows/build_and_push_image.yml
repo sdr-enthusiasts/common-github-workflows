@@ -109,6 +109,21 @@ on:
         type: boolean
         required: false
         default: false
+      cache_enabled:
+        description: "Use actions/cache to populate cached data"
+        type: boolean
+        required: false
+        default: false
+      cache_path:
+        description: "The path to restore the cache to"
+        type: string
+        required: false
+        default: ""
+      cache_key:
+        description: "The cache key to restore"
+        type: string
+        required: false
+        default: ""
 
     secrets:
       dockerhub_token:
@@ -158,6 +173,27 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      # check cache
+      - name: "check 'cache_enabled'"
+        if: ${{ inputs.cache_enabled }}
+        id: workflow_env_check_cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
+      - name: "ensure cache hit"
+        if: ${{ inputs.cache_enabled }}
+        env:
+          CACHE_HIT: ${{ steps.workflow_env_check_cache.outputs.cache-hit }}
+          CACHE_PATH: ${{ inputs.cache_path }}
+        run: |
+          if [[ "${CACHE_HIT,,}" != "true" ]]; then
+            echo "::error title=${{ github.job }}: Cache hit returned false"
+            exit 1
+          else
+            ls -laR "$CACHE_PATH"
+          fi
 
       # Check imported environment variable PUSH_ENABLED
       - name: "check 'push_enabled'"
@@ -512,6 +548,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Populate cache
+      - name: "check 'cache_enabled'"
+        if: ${{ inputs.cache_enabled }}
+        id: populate_cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
+
       # Determine single arch suffix
       - name: Determine platform suffix
         id: platform_suffix
@@ -673,6 +718,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Populate cache
+      - name: "check 'cache_enabled'"
+        if: ${{ inputs.cache_enabled }}
+        id: populate_cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
+
       # Log into dockerhub
       - name: Login to DockerHub
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
@@ -822,6 +876,15 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      # Populate cache
+      - name: "check 'cache_enabled'"
+        if: ${{ inputs.cache_enabled }}
+        id: populate_cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
 
       # Determine single arch suffix
       - name: Determine platform suffix
@@ -998,6 +1061,15 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      # Populate cache
+      - name: "check 'cache_enabled'"
+        if: ${{ inputs.cache_enabled }}
+        id: populate_cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
 
       # Log into dockerhub
       - name: Login to DockerHub

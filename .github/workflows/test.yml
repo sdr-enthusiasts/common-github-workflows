@@ -146,3 +146,41 @@ jobs:
       platform_linux_i386_enabled: true
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  populate_cache:
+    name: "Populate cache"
+    runs-on: ubuntu-latest
+    steps:
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: "Make some data to cache"
+        run: |
+          mkdir -p ./cache
+          dd if=/dev/zero of=./cache/data bs=4k count=50
+          ls -la ./cache/data
+
+      # Populate cache
+      - name: "Populate cache"
+        id: populate_cache
+        uses: actions/cache@v3
+        with:
+          path: ./cache
+          key: ${{ github.run_id }}
+
+  check_cache:
+    name: "Check cache"
+    needs: [populate_cache]
+    uses: ./.github/workflows/build_and_push_image.yml
+    with:
+      push_enabled: false
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      cache_enabled: true
+      cache_path: ./cache
+      cache_key: ${{ github.run_id }}
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}

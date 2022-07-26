@@ -65,6 +65,9 @@ jobs:
 | `get_version_method` | See below | `false` | `file_in_container:file=/IMAGE_VERSION` |
 | `build_nohealthcheck` | Set to true to build a nohealthcheck version | `false` | `true` |
 | `build_with_tmpfs` | Set to true to use [`docker-on-tmpfs`](https://github.com/marketplace/actions/docker-on-tmpfs) | `false` | `false` |
+| `cache_enabled` | Utilise the [GitHub action cache](https://github.com/marketplace/actions/cache) | `false` | `false` |
+| `cache_path` | Should match the `path:` input to the `actions/cache` step in a previous job | `false` | |
+| `cache_key` | Should match the `key:` input to the `actions/cache` step in a previous job | `false` | |
 
 #### `get_version_method`
 
