@@ -149,6 +149,7 @@ jobs:
 
   populate_cache:
     name: "Populate cache"
+    runs-on: ubuntu-latest
     steps:
       # Check out code
       - name: Checkout
