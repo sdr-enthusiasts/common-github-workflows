@@ -186,10 +186,13 @@ jobs:
         if: ${{ inputs.cache_enabled }}
         env:
           CACHE_HIT: ${{ steps.workflow_env_check_cache.outputs.cache-hit }}
+          CACHE_PATH: ${{ inputs.cache_path }}
         run: |
           if [[ "${CACHE_HIT,,}" != "true" ]]; then
             echo "::error title=${{ github.job }}: Cache hit returned false"
             exit 1
+          else
+            ls -laR "$CACHE_PATH"
           fi
       
       # Check imported environment variable PUSH_ENABLED
