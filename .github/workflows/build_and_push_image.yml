@@ -187,7 +187,7 @@ jobs:
         env:
           CACHE_HIT: ${{ steps.workflow_env_check_cache.outputs.cache-hit }}
         run: |
-          if [[ "${CACHE_HIT,,}" == "false" ]]; then
+          if [[ "${CACHE_HIT,,}" != "true" ]]; then
             echo "::error title=${{ github.job }}: Cache hit returned false"
             exit 1
           fi

@@ -157,12 +157,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: "Make some data to cache"
+        run: |
+          mkdir -p ./cache/data
+          dd if=/dev/zero of=./cache/data bs=4k count=50
+          ls -la ./cache/data
+
       # Populate cache
       - name: "Populate cache"
         id: populate_cache
         uses: actions/cache@v3
         with:
-          path: test_image_rootfs
+          path: ./cache
           key: ${{ github.run_id }}
   
   check_cache:
@@ -174,7 +180,7 @@ jobs:
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       cache_enabled: true
-      cache_path: test_image_rootfs_cache
+      cache_path: ./cache
       cache_key: ${{ github.run_id }}
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
