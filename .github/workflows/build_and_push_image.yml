@@ -1178,10 +1178,10 @@ jobs:
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
           echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
           IMAGE_TAGS=()
-          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_nohealthcheck")
           fi
-          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("latest_nohealthcheck")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
