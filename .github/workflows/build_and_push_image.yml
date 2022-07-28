@@ -658,10 +658,10 @@ jobs:
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
           echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
           IMAGE_TAGS=()
-          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
           fi
-          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("latest_${{ steps.platform_suffix.outputs.platform_suffix }}")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
@@ -819,10 +819,10 @@ jobs:
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
           echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
           IMAGE_TAGS=()
-          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}")
           fi
-          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("latest")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
@@ -1002,10 +1002,10 @@ jobs:
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
           echo "::set-output name=names::${IMAGE_NAMES_CSV::-1}"
           IMAGE_TAGS=()
-          if [[ ${{ steps.image_version.outputs.build_version_specific }} == "true" ]]; then
+          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
           fi
-          if [[ ${{ needs.workflows_env.outputs.build_latest }} == "true" ]]; then
+          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("latest_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
