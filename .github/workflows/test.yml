@@ -123,19 +123,6 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  build_push_test_git_commit_hash_short:
-    name: "Build & Push, version: git_commit_hash_short"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: true
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      build_nohealthcheck: false
-      build_test: true
-      get_version_method: git_commit_hash_short
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
   build_only_nohealthcheck:
     name: "Build only, nohealthcheck"
     uses: ./.github/workflows/build_and_push_image.yml
