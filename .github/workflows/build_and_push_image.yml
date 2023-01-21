@@ -89,6 +89,11 @@ on:
         type: boolean
         required: false
         default: true
+      build_test:
+        description: "Set to true to include a test tag"
+        type: boolean
+        required: false
+        default: false
       build_version_specific:
         description: "Set to true to include a version tag"
         type: boolean
@@ -159,6 +164,7 @@ jobs:
       build_multi_arch: ${{ steps.workflow_env_build_multi_arch.outputs.build_multi_arch_enabled }}
       build_single_arch: ${{ steps.workflow_env_build_single_arch.outputs.build_single_arch_enabled }}
       build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
+      build_test: ${{ steps.workflow_env_build_latest.outputs.build_test }}
       build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
       get_version_method: ${{ steps.workflow_env_get_version_method.outputs.method }}
       get_version_method_file_in_container: ${{ steps.workflow_env_get_version_method.outputs.file_in_container }}
@@ -413,6 +419,19 @@ jobs:
           FAIL_STEP=0
           if [[ "${BUILD_LATEST,,}" == "true" ]]; then
             echo "::set-output name=build_latest::true"
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_latest
+      - name: "check 'build_test'"
+        id: workflow_env_build_test
+        env:
+          BUILD_TEST: ${{ inputs.build_test }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_TEST,,}" == "true" ]]; then
+            echo "::set-output name=build_test::true"
           fi
           exit $FAIL_STEP
 
@@ -824,6 +843,9 @@ jobs:
           fi
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("latest")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.build_test }}" == "true" ]]; then
+            IMAGE_TAGS+=("test")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
           echo "::set-output name=tags::${IMAGE_TAGS_CSV::-1}"

@@ -61,6 +61,7 @@ jobs:
 | `build_enabled` | Set to `true` to build images | `false` | `true` |
 | `build_platform_specific` | Set to `true` to also build platform specific images | `false` | `true` |
 | `build_latest` | Set to `true` to include a latest tag | `false` | `true` |
+| `build_test` | Set to `true` to include a test tag | `false` | `false` |
 | `build_version_specific` | Set to `true` to include a version tag | `false` | `true` |
 | `get_version_method` | See below | `false` | `file_in_container:file=/IMAGE_VERSION` |
 | `build_nohealthcheck` | Set to true to build a nohealthcheck version | `false` | `true` |
