@@ -1215,7 +1215,7 @@ jobs:
             done
           done
           printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags::${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
 
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
