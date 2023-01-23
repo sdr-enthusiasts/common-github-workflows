@@ -147,6 +147,19 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
+  build_test:
+    uses: ./.github/workflows/build_and_push_image.yml
+    name: "Build & Push Test, nohealthcheck"
+    with:
+      push_enabled: true
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      build_latest: false
+      build_test: true
+
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
   populate_cache:
     name: "Populate cache"
     runs-on: ubuntu-latest
