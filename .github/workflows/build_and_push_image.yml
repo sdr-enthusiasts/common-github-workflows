@@ -621,7 +621,7 @@ jobs:
       # Cache build of image & get image version from build output
       - name: Cache build of image
         id: cache_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}
@@ -704,7 +704,7 @@ jobs:
       # Push final image
       - name: Build & Push Final Image
         id: final_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}
@@ -783,7 +783,7 @@ jobs:
       # Cache build of linux/amd64 image & get image version from build output
       - name: Cache build of image
         id: cache_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}
@@ -868,7 +868,7 @@ jobs:
       # Build & push final images
       - name: Build & Push Final Image
         id: final_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}
@@ -966,7 +966,7 @@ jobs:
       - name: Cache build of image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: cache_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
@@ -1053,7 +1053,7 @@ jobs:
       - name: Build & Push Final Image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: final_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
@@ -1142,7 +1142,7 @@ jobs:
       - name: Cache build of image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: cache_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
@@ -1229,7 +1229,7 @@ jobs:
       - name: Build & Push Final Image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: final_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
