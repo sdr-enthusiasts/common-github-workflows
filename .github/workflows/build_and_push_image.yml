@@ -653,11 +653,11 @@ jobs:
 
         # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: needs.workflows_env.outputs.build_baseimage_test == 'true'
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test }}
         run: sed ${{ needs.workflows_env.outputs.build_image_url }} < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: needs.workflows_env.outputs.build_baseimage_test == 'false'
+        if: ${{ !needs.workflows_env.outputs.build_baseimage_test }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Cache build of image & get image version from build output
@@ -824,11 +824,11 @@ jobs:
 
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: needs.workflows_env.outputs.build_baseimage_test == 'true'
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test }}
         run: sed ${{ needs.workflows_env.outputs.build_image_url }} < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: needs.workflows_env.outputs.build_baseimage_test == 'false'
+        if: ${{ !needs.workflows_env.outputs.build_baseimage_test }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Cache build of linux/amd64 image & get image version from build output
@@ -1013,11 +1013,11 @@ jobs:
 
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: needs.workflows_env.outputs.build_baseimage_test == 'true'
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test }}
         run: sed ${{ needs.workflows_env.outputs.build_image_url }} < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: needs.workflows_env.outputs.build_baseimage_test == 'false'
+        if: ${{ !needs.workflows_env.outputs.build_baseimage_test }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Patch dockerfile to remove healthcheck
@@ -1198,11 +1198,11 @@ jobs:
 
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: needs.workflows_env.outputs.build_baseimage_test == 'true'
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test }}
         run: sed ${{ needs.workflows_env.outputs.build_image_url }} < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: needs.workflows_env.outputs.build_baseimage_test == 'false'
+        if: ${{ !needs.workflows_env.outputs.build_baseimage_test }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Patch dockerfile to remove healthcheck
