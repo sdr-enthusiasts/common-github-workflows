@@ -94,6 +94,11 @@ on:
         type: boolean
         required: false
         default: false
+      build_baseimage_test:
+        description: "Set to true to include a baseimage-test tag"
+        type: boolean
+        required: false
+        default: false
       build_version_specific:
         description: "Set to true to include a version tag"
         type: boolean
@@ -165,6 +170,7 @@ jobs:
       build_single_arch: ${{ steps.workflow_env_build_single_arch.outputs.build_single_arch_enabled }}
       build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
       build_test: ${{ steps.workflow_env_build_latest.outputs.build_test }}
+      build_baseimage_test: ${{ steps.workflow_env_build_latest.outputs.build_baseimage_test }}
       build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
       get_version_method: ${{ steps.workflow_env_get_version_method.outputs.method }}
       get_version_method_file_in_container: ${{ steps.workflow_env_get_version_method.outputs.file_in_container }}
@@ -432,6 +438,20 @@ jobs:
           FAIL_STEP=0
           if [[ "${BUILD_TEST,,}" == "true" ]]; then
             echo "build_test=true" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_baseimage_test
+
+      - name: "check 'build_baseimage_test'"
+        id: workflow_env_build_baseimage_test
+        env:
+          BUILD_BASEIMAGE_TEST: ${{ inputs.build_baseimage_test }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_BASEIMAGE_TEST,,}" == "true" ]]; then
+            echo "build_baseimage_test=true" >> $GITHUB_OUTPUT
           fi
           exit $FAIL_STEP
 
@@ -846,6 +866,9 @@ jobs:
           fi
           if [[ "${{ needs.workflows_env.outputs.build_test }}" == "true" ]]; then
             IMAGE_TAGS+=("test")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.build_baseimage_test }}" == "true" ]]; then
+            IMAGE_TAGS+=("baseimage-test")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
           echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
