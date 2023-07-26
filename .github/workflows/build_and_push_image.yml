@@ -580,6 +580,18 @@ jobs:
           fi
           exit $FAIL_STEP
 
+      - name: Build Image URL
+        id: workflow_env_build_image_url
+        env:
+          BUILD_IMAGE_URL: ${{ inputs.build_image_url }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ -n "${BUILD_IMAGE_URL}" ]]; then
+            echo "build_image_url=${BUILD_IMAGE_URL}" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+
   build_platform_specific:
     name: Build
     if: ${{ needs.workflows_env.outputs.build_single_arch }}
