@@ -134,7 +134,7 @@ on:
         type: string
         required: false
         default: ""
-      build_image_url:
+      build_baseimage_url:
         description: "The URL of the image to build. The whole SED statement."
         type: string
         required: false
@@ -173,9 +173,9 @@ jobs:
       platforms_matrix_json: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_matrix_json }}
       build_multi_arch: ${{ steps.workflow_env_build_multi_arch.outputs.build_multi_arch_enabled }}
       build_single_arch: ${{ steps.workflow_env_build_single_arch.outputs.build_single_arch_enabled }}
-      build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
-      build_test: ${{ steps.workflow_env_build_latest.outputs.build_test }}
-      build_baseimage_test: ${{ steps.workflow_env_build_latest.outputs.build_baseimage_test }}
+      build_latest: ${{ steps.workflow_env_build.outputs.build_latest }}
+      build_test: ${{ steps.workflow_env_build.outputs.build_test }}
+      build_baseimage_test: ${{ steps.workflow_env_build.outputs.build_baseimage_test }}
       build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
       get_version_method: ${{ steps.workflow_env_get_version_method.outputs.method }}
       get_version_method_file_in_container: ${{ steps.workflow_env_get_version_method.outputs.file_in_container }}
@@ -183,7 +183,7 @@ jobs:
       get_version_method_cargo_toml_file_in_repo: ${{ steps.workflow_env_get_version_method.outputs.cargo_toml_file_in_repo }}
       build_nohealthcheck: ${{ steps.workflow_env_build_nohealthcheck.outputs.build_nohealthcheck }}
       build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
-      build_image_url: ${{ steps.workflow_env_build.outputs.build_image_url }} # THE WHOLE SED STATEMENT!!!!
+      build_baseimage_url: ${{ steps.workflow_env_build.outputs.build_baseimage_url }} # THE WHOLE SED STATEMENT!!!!
 
     steps:
       # Check out code
@@ -453,17 +453,17 @@ jobs:
         id: workflow_env_build_baseimage_test
         env:
           BUILD_BASEIMAGE_TEST: ${{ inputs.build_baseimage_test }}
-          BUILD_IMAGE_URL: ${{ inputs.build_image_url }}
+          BUILD_BASEIMAGE_URL: ${{ inputs.build_baseimage_url }}
         run: |
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_BASEIMAGE_TEST,,}" == "true" ]]; then
             echo "build_baseimage_test=true" >> $GITHUB_OUTPUT
-            if [[ -z "${BUILD_IMAGE_URL}" ]]; then
-              echo "::error title=${{ github.job }}: Environment variable invalid::BUILD_IMAGE_URL is empty"
+            if [[ -z "${BUILD_BASEIMAGE_URL}" ]]; then
+              echo "::error title=${{ github.job }}: Environment variable invalid::BUILD_BASEIMAGE_URL is empty"
               FAIL_STEP=1
             else
-              echo "build_image_url='${BUILD_IMAGE_URL}'" >> $GITHUB_OUTPUT
+              echo "build_image_url=${BUILD_BASEIMAGE_URL}" >> $GITHUB_OUTPUT
             fi
           else
             echo "build_baseimage_test=false" >> $GITHUB_OUTPUT
@@ -655,11 +655,11 @@ jobs:
 
         # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'true' }}
-        run: sed ${{ needs.workflows_env.outputs.build_image_url }} < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
+        run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'false' }}
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Cache build of image & get image version from build output
@@ -826,11 +826,11 @@ jobs:
 
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'true' }}
-        run: sed ${{ needs.workflows_env.outputs.build_image_url }} < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
+        run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'false' }}
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Cache build of linux/amd64 image & get image version from build output
@@ -1015,11 +1015,11 @@ jobs:
 
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'true' }}
-        run: sed ${{ needs.workflows_env.outputs.build_image_url }} < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
+        run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'false' }}
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Patch dockerfile to remove healthcheck
@@ -1200,13 +1200,13 @@ jobs:
 
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'true' }}
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
         run: |
-          echo ${{ needs.workflows_env.outputs.build_image_url }}
-          sed 's/${{ needs.workflows_env.outputs.build_image_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          echo ${{ needs.workflows_env.outputs.build_baseimage_url }}
+          sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test  == 'false' }}
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Patch dockerfile to remove healthcheck
