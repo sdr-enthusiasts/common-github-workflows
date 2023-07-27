@@ -463,7 +463,7 @@ jobs:
               echo "::error title=${{ github.job }}: Environment variable invalid::BUILD_IMAGE_URL is empty"
               FAIL_STEP=1
             else
-              echo "build_image_url=${BUILD_IMAGE_URL}" >> $GITHUB_OUTPUT
+              echo "build_image_url='${BUILD_IMAGE_URL}'" >> $GITHUB_OUTPUT
             fi
           else
             echo "build_baseimage_test=false" >> $GITHUB_OUTPUT
@@ -579,18 +579,6 @@ jobs:
           FAIL_STEP=0
           if [[ "${BUILD_WITH_TMPFS,,}" == "true" ]]; then
             echo "build_with_tmpfs=true" >> $GITHUB_OUTPUT
-          fi
-          exit $FAIL_STEP
-
-      - name: Build Image URL
-        id: workflow_env_build_image_url
-        env:
-          BUILD_IMAGE_URL: ${{ inputs.build_image_url }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ -n "${BUILD_IMAGE_URL}" ]]; then
-            echo "build_image_url='${BUILD_IMAGE_URL}'" >> $GITHUB_OUTPUT
           fi
           exit $FAIL_STEP
 
