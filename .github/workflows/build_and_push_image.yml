@@ -941,7 +941,7 @@ jobs:
 
   build_platform_specific_nohealthcheck:
     name: Build nohealthcheck
-    if: needs.workflows_env.outputs.build_single_arch == 'true'
+    if: needs.workflows_env.outputs.build_single_arch == 'true' && needs.workflows_env.outputs.build_nohealthcheck == 'true'
     runs-on: ubuntu-latest
     needs: [workflows_env]
     strategy:
@@ -1137,7 +1137,7 @@ jobs:
 
   build_nohealthcheck:
     name: Build nohealthcheck (manifest)
-    if: needs.workflows_env.outputs.build_multi_arch == 'true'
+    if: needs.workflows_env.outputs.build_multi_arch == 'true' && needs.workflows_env.outputs.build_nohealthcheck == 'true'
     runs-on: ubuntu-latest
     needs: [workflows_env]
 
