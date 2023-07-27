@@ -1202,7 +1202,6 @@ jobs:
       - name: Patch Dockerfile to correct base image
         if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
         run: |
-          echo ${{ needs.workflows_env.outputs.build_baseimage_url }}
           sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
