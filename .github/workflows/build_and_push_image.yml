@@ -135,7 +135,7 @@ on:
         required: false
         default: ""
       build_image_url:
-        description: "The URL of the image to build"
+        description: "The URL of the image to build. The whole SED statement."
         type: string
         required: false
         default: ""
@@ -465,6 +465,8 @@ jobs:
             else
               echo "build_image_url=${BUILD_IMAGE_URL}" >> $GITHUB_OUTPUT
             fi
+          else
+            echo "build_baseimage_test=false" >> $GITHUB_OUTPUT
           fi
           exit $FAIL_STEP
 
@@ -588,7 +590,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ -n "${BUILD_IMAGE_URL}" ]]; then
-            echo "build_image_url=${BUILD_IMAGE_URL}" >> $GITHUB_OUTPUT
+            echo "build_image_url='${BUILD_IMAGE_URL}'" >> $GITHUB_OUTPUT
           fi
           exit $FAIL_STEP
 
