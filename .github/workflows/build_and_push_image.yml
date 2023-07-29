@@ -444,13 +444,15 @@ jobs:
           FAIL_STEP=0
           if [[ "${BUILD_LATEST,,}" == "true" ]]; then
             echo "build_latest=true" >> $GITHUB_OUTPUT
-            if [[ -z "${DOCKER_LATEST_TAG}" ]]; then
+          fi
+
+          if [[ -z "${DOCKER_LATEST_TAG}" ]]; then
               echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_LATEST_TAG is empty"
               FAIL_STEP=1
             else
               echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> $GITHUB_OUTPUT
-            fi
           fi
+
           exit $FAIL_STEP
 
       # Check imported environment variables build_latest
