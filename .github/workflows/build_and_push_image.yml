@@ -139,6 +139,16 @@ on:
         type: string
         required: false
         default: ""
+      dockerfile_changes:
+        description: "The changes to make to the dockerfile as a sed statement."
+        type: string
+        required: false
+        default: ""
+      docker_latest_tag:
+        description: "The tag to use for the latest tag"
+        type: string
+        required: false
+        default: "latest"
 
     secrets:
       dockerhub_token:
@@ -174,6 +184,7 @@ jobs:
       build_multi_arch: ${{ steps.workflow_env_build_multi_arch.outputs.build_multi_arch_enabled }}
       build_single_arch: ${{ steps.workflow_env_build_single_arch.outputs.build_single_arch_enabled }}
       build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
+      build_latest_tag: ${{ steps.workflow_env_build_latest.outputs.docker_latest_tag }}
       build_test: ${{ steps.workflow_env_build_test.outputs.build_test }}
       build_baseimage_test: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_test }}
       build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
@@ -184,6 +195,7 @@ jobs:
       build_nohealthcheck: ${{ steps.workflow_env_build_nohealthcheck.outputs.build_nohealthcheck }}
       build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
       build_baseimage_url: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_url }} # THE WHOLE SED STATEMENT!!!!
+      dockerfile_changes: ${{ steps.workflow_env_dockerfile_changes.outputs.dockerfile_changes }}
 
     steps:
       # Check out code
@@ -426,11 +438,18 @@ jobs:
         id: workflow_env_build_latest
         env:
           BUILD_LATEST: ${{ inputs.build_latest }}
+          DOCKER_LATEST_TAG: ${{ inputs.docker_latest_tag }}
         run: |
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_LATEST,,}" == "true" ]]; then
             echo "build_latest=true" >> $GITHUB_OUTPUT
+            if [[ -z "${DOCKER_LATEST_TAG}" ]]; then
+              echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_LATEST_TAG is empty"
+              FAIL_STEP=1
+            else
+              echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> $GITHUB_OUTPUT
+            fi
           fi
           exit $FAIL_STEP
 
@@ -582,6 +601,18 @@ jobs:
           fi
           exit $FAIL_STEP
 
+      - name: "check dockerfile_changes"
+        id: workflow_env_dockerfile_changes
+        env:
+          DOCKERFILE_CHANGES: ${{ inputs.dockerfile_changes }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ -n "${DOCKERFILE_CHANGES}" ]]; then
+            echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+
   build_platform_specific:
     name: Build
     if: ${{ needs.workflows_env.outputs.build_single_arch }}
@@ -648,6 +679,15 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Change dockerfile
+        id: change_dockerfile
+        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
+        run: |
+          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
+            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
+          fi
+
+        # TODO: can we just -i these changes?
         # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
         if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
@@ -720,7 +760,7 @@ jobs:
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("latest_${{ steps.platform_suffix.outputs.platform_suffix }}")
+            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
           echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
@@ -814,6 +854,14 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Change dockerfile
+        id: change_dockerfile
+        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
+        run: |
+          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
+            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
+          fi
+
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
         if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
@@ -885,7 +933,7 @@ jobs:
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("latest")
+            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_test }}" == "true" ]]; then
             IMAGE_TAGS+=("test")
@@ -1003,6 +1051,14 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Change dockerfile
+        id: change_dockerfile
+        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
+        run: |
+          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
+            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
+          fi
+
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
         if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
@@ -1083,7 +1139,7 @@ jobs:
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("latest_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
+            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
           echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
@@ -1188,6 +1244,14 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Change dockerfile
+        id: change_dockerfile
+        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
+        run: |
+          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
+            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
+          fi
+
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
         if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
@@ -1269,7 +1333,7 @@ jobs:
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_nohealthcheck")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("latest_nohealthcheck")
+            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_nohealthcheck")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
           echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
