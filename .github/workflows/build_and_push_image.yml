@@ -939,7 +939,11 @@ jobs:
             IMAGE_TAGS+=("test")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_baseimage_test }}" == "true" ]]; then
-            IMAGE_TAGS+=("baseimage-test")
+            if [[ "${{ needs.workflows_env.outputs.build_latest_tag }}" == "latest" ]]; then
+              IMAGE_TAGS+=("baseimage-test")
+            else
+              IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-baseimage-test")
+            fi
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
           echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
