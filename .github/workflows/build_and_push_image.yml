@@ -778,7 +778,7 @@ jobs:
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
@@ -961,7 +961,7 @@ jobs:
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
@@ -1162,7 +1162,7 @@ jobs:
       - name: Extract metadata (tags, labels) for Docker
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
@@ -1356,7 +1356,7 @@ jobs:
       - name: Extract metadata (tags, labels) for Docker
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
