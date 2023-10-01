@@ -9,6 +9,7 @@ updates:
       interval: daily
     assignees:
       - "mikenye"
+      - "fredclausen"
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -17,3 +18,4 @@ updates:
       interval: "daily"
     assignees:
       - "mikenye"
+      - "fredclausen"
