@@ -590,7 +590,7 @@ jobs:
           fi
           exit $FAIL_STEP
 
-      # check for import enviornment variables build_with_tmpfs
+      # check for import environment variables build_with_tmpfs
       - name: "check 'build_with_tmpfs'"
         id: workflow_env_build_with_tmpfs
         env:

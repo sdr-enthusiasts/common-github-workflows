@@ -11,7 +11,6 @@ on:
       - main
 
 jobs:
-
   build_only_version_file_in_container:
     name: "Build only, version: file_in_container"
     uses: ./.github/workflows/build_and_push_image.yml

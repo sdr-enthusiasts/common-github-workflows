@@ -1,16 +1,15 @@
 ---
-
 # Cancels duplicate github actions when superseded
 
 name: Cancelling Duplicates
 on:
   workflow_run:
     workflows:
-      - 'Build & Push Docker Images'
-      - 'Test Workflow'
-      - 'Linting (Markdown)'
-      - 'Linting (YAML)'
-    types: ['requested']
+      - "Build & Push Docker Images"
+      - "Test Workflow"
+      - "Linting (Markdown)"
+      - "Linting (YAML)"
+    types: ["requested"]
 
 jobs:
   cancel-duplicate-workflow-runs:
