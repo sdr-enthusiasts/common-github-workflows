@@ -718,7 +718,7 @@ jobs:
           set -x
           case "${{ needs.workflows_env.outputs.get_version_method }}" in
             cargo_toml_file_in_repo)
-              VERSION=$(cat ./${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_repo }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
+              VERSION=$(cat ./${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_repo }} | grep -e '\[package\]' -e '\[workspace\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
               ;;
             cargo_toml_file_in_image)
               VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
