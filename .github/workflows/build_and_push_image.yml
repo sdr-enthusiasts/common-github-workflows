@@ -959,6 +959,7 @@ jobs:
           fi
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}")
+            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-build-$GITHUB_RUN_NUMBER")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_test }}" == "true" ]]; then
             IMAGE_TAGS+=("test")
