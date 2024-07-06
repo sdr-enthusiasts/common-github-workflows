@@ -702,7 +702,7 @@ jobs:
       # Set up buildx
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3.3.0
+        uses: docker/setup-buildx-action@v3.4.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -877,7 +877,7 @@ jobs:
       # Set up buildx
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3.3.0
+        uses: docker/setup-buildx-action@v3.4.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -1079,7 +1079,7 @@ jobs:
       - name: Set up Docker Buildx
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: buildx
-        uses: docker/setup-buildx-action@v3.3.0
+        uses: docker/setup-buildx-action@v3.4.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -1272,7 +1272,7 @@ jobs:
       - name: Set up Docker Buildx
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: buildx
-        uses: docker/setup-buildx-action@v3.3.0
+        uses: docker/setup-buildx-action@v3.4.0
 
       - name: Change dockerfile
         id: change_dockerfile
