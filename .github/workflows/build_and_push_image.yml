@@ -696,8 +696,8 @@ jobs:
           swap_location: "/mnt/swapfile"
 
       # Set up QEMU for multi-arch builds
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.3.0
+      #- name: Set up QEMU
+      #  uses: docker/setup-qemu-action@v3.3.0
 
       # Set up buildx
       - name: Set up Docker Buildx
@@ -863,8 +863,8 @@ jobs:
           password: ${{ secrets.ghcr_token }}
 
       # Set up QEMU for multi-arch builds
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.3.0
+      #- name: Set up QEMU
+      #  uses: docker/setup-qemu-action@v3.3.0
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
@@ -1071,9 +1071,9 @@ jobs:
           swap_location: "/mnt/swapfile"
 
       # Set up QEMU for multi-arch builds
-      - name: Set up QEMU
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.3.0
+      #- name: Set up QEMU
+      #  if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
+      #  uses: docker/setup-qemu-action@v3.3.0
 
       # Set up buildx
       - name: Set up Docker Buildx
@@ -1264,9 +1264,9 @@ jobs:
           swap_location: "/mnt/swapfile"
 
       # Set up QEMU for multi-arch builds
-      - name: Set up QEMU
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.3.0
+      #- name: Set up QEMU
+      #  if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
+      #  uses: docker/setup-qemu-action@v3.3.0
 
       # Set up buildx
       - name: Set up Docker Buildx
