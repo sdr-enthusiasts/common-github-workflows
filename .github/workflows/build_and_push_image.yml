@@ -166,7 +166,7 @@ on:
 jobs:
   workflows_env:
     name: Prepare workflow environment
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     outputs:
       docker_build_context: ${{ steps.workflow_env_build.outputs.context }}
@@ -641,7 +641,7 @@ jobs:
   build_platform_specific:
     name: Build
     if: ${{ needs.workflows_env.outputs.build_single_arch }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [workflows_env]
     strategy:
       matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
@@ -826,7 +826,7 @@ jobs:
   build:
     name: Build (manifest)
     if: ${{ needs.workflows_env.outputs.build_multi_arch }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [workflows_env]
 
     steps:
@@ -1010,7 +1010,7 @@ jobs:
   build_platform_specific_nohealthcheck:
     name: Build nohealthcheck
     if: needs.workflows_env.outputs.build_single_arch == 'true' && needs.workflows_env.outputs.build_nohealthcheck == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [workflows_env]
     strategy:
       matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
@@ -1214,7 +1214,7 @@ jobs:
   build_nohealthcheck:
     name: Build nohealthcheck (manifest)
     if: needs.workflows_env.outputs.build_multi_arch == 'true' && needs.workflows_env.outputs.build_nohealthcheck == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [workflows_env]
 
     steps:
