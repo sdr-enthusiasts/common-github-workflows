@@ -214,7 +214,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: workflow_env_check_cache
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v4.2.2
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -657,7 +657,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v4.2.2
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -840,7 +840,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v4.2.2
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -1027,7 +1027,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v4.2.2
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -1229,7 +1229,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v4.2.2
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
