@@ -1,5 +1,5 @@
 ---
-name: Test Workflow
+name: Test Legacy Workflow
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    uses: ./.github/workflows/sdre.yml
+    uses: ./.github/workflows/build_and_push_image.yml
     name: "Build & Push Test"
     with:
       push_enabled: true
@@ -24,7 +24,7 @@ jobs:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
   build_test:
-    uses: ./.github/workflows/sdre.yml
+    uses: ./.github/workflows/build_and_push_image.yml
     name: "Build & Push Test"
     with:
       push_enabled: true
@@ -36,7 +36,7 @@ jobs:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
   build_baseimage_test:
-    uses: ./.github/workflows/sdre.yml
+    uses: ./.github/workflows/build_and_push_image.yml
     name: "Build & Push Test base image"
     with:
       push_enabled: true
@@ -77,7 +77,7 @@ jobs:
   check_cache:
     name: "Check cache"
     needs: [populate_cache]
-    uses: ./.github/workflows/sdre.yml
+    uses: ./.github/workflows/build_and_push_image.yml
     with:
       push_enabled: false
       ghcr_repo_owner: mikenye

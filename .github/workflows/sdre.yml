@@ -1,0 +1,632 @@
+---
+name: Build & Push Docker Images
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_context:
+        description: "Path to docker build context"
+        required: false
+        type: string
+        default: "."
+      docker_build_file:
+        description: "Path to the dockerfile within docker_build_context"
+        required: false
+        type: string
+        default: "./Dockerfile"
+      push_enabled:
+        description: "Set to true to push the image"
+        type: boolean
+        required: false
+        default: false
+      push_destinations:
+        description: "Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
+        required: false
+        type: string
+        default: "ghcr.io"
+      dockerhub_profile:
+        description: "The dockerhub username/profile/organisation the image should be pushed to"
+        required: false
+        type: string
+        default: ""
+      dockerhub_repo:
+        description: "The dockerhub repository the image should be pushed to"
+        required: false
+        type: string
+        default: ""
+      dockerhub_username:
+        description: "The dockerhub username. If not given, will revert to dockerhub_profile"
+        required: false
+        type: string
+        default: ""
+      ghcr_repo_owner:
+        description: "The github username/profile/organisation the repo to be pushed to belongs to"
+        required: false
+        type: string
+        default: ""
+      ghcr_repo:
+        description: "The ghcr.io repository the image should be pushed to"
+        required: false
+        type: string
+        default: ""
+      platform_linux_arm32v7_enabled:
+        description: "Set to true to build for the linux/arm/v7 platform"
+        type: boolean
+        required: false
+        default: true
+      platform_linux_arm64v8_enabled:
+        description: "Set to true to build for the linux/arm64 platform"
+        type: boolean
+        required: false
+        default: true
+      platform_linux_amd64_enabled:
+        description: "Set to true to build for the linux/amd64 platform"
+        type: boolean
+        required: false
+        default: true
+      build_enabled:
+        description: "Set to true to build images"
+        type: boolean
+        required: false
+        default: true
+
+      build_latest:
+        description: "Set to true to include a latest tag"
+        type: boolean
+        required: false
+        default: true
+      build_test:
+        description: "Set to true to include a test tag"
+        type: boolean
+        required: false
+        default: false
+      build_baseimage_test:
+        description: "Set to true to include a baseimage-test tag"
+        type: boolean
+        required: false
+        default: false
+      build_with_tmpfs:
+        description: "Set to true to build with tmpfs"
+        type: boolean
+        required: false
+        default: false
+      cache_enabled:
+        description: "Use actions/cache to populate cached data"
+        type: boolean
+        required: false
+        default: false
+      cache_path:
+        description: "The path to restore the cache to"
+        type: string
+        required: false
+        default: ""
+      cache_key:
+        description: "The cache key to restore"
+        type: string
+        required: false
+        default: ""
+      build_baseimage_url:
+        description: "The URL of the image to build. The whole SED statement."
+        type: string
+        required: false
+        default: ""
+      dockerfile_changes:
+        description: "The changes to make to the dockerfile as a sed statement."
+        type: string
+        required: false
+        default: ""
+      docker_latest_tag:
+        description: "The tag to use for the latest tag"
+        type: string
+        required: false
+        default: "latest"
+
+    secrets:
+      dockerhub_token:
+        description: "If pushing to dockerhub, this should be a token for dockerhub_profile"
+        required: false
+      ghcr_token:
+        description: "If pushing to ghcr.io, this should be a github token"
+        required: false
+
+jobs:
+  workflows_env:
+    name: Prepare workflow environment
+    runs-on: ubuntu-22.04
+
+    outputs:
+      docker_build_context: ${{ steps.workflow_env_build.outputs.context }}
+      docker_build_file: ${{ steps.workflow_env_build.outputs.file }}
+      push_enabled: ${{ steps.workflow_env_push_enabled.outputs.push_enabled }}
+      output_dockerhub_enabled: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled }}
+      output_ghcr_io_enabled: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled }}
+      dockerhub_profile: ${{ steps.workflow_env_dockerhub_profile.outputs.dockerhub_profile }}
+      dockerhub_repo: ${{ steps.workflow_env_dockerhub_repo.outputs.dockerhub_repo }}
+      dockerhub_username: ${{ steps.workflow_env_dockerhub_username.outputs.dockerhub_username }}
+      ghcr_repo: ${{ steps.workflow_env_ghcr_repo.outputs.ghcr_repo}}
+      ghcr_repo_owner: ${{ steps.workflow_env_ghcr_repo_owner.outputs.ghcr_repo_owner}}
+      # platform_linux_arm32v6_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}
+      platform_linux_arm32v7_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v7 }}
+      platform_linux_arm64v8_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm64 }}
+      platform_linux_amd64_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_amd64 }}
+      # platform_linux_i386_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}
+      platforms_csv: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_csv }}
+      platforms_matrix_json: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_matrix_json }}
+      build_multi_arch: ${{ steps.workflow_env_build_multi_arch.outputs.build_multi_arch_enabled }}
+      build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
+      build_latest_tag: ${{ steps.workflow_env_build_latest.outputs.docker_latest_tag }}
+      build_test: ${{ steps.workflow_env_build_test.outputs.build_test }}
+      build_baseimage_test: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_test }}
+      build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
+      build_baseimage_url: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_url }} # THE WHOLE SED STATEMENT!!!!
+      dockerfile_changes: ${{ steps.workflow_env_dockerfile_changes.outputs.dockerfile_changes }}
+
+    steps:
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      # check cache
+      - name: "check 'cache_enabled'"
+        if: ${{ inputs.cache_enabled }}
+        id: workflow_env_check_cache
+        uses: actions/cache@v4.2.3
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
+      - name: "ensure cache hit"
+        if: ${{ inputs.cache_enabled }}
+        env:
+          CACHE_HIT: ${{ steps.workflow_env_check_cache.outputs.cache-hit }}
+          CACHE_PATH: ${{ inputs.cache_path }}
+        run: |
+          if [[ "${CACHE_HIT,,}" != "true" ]]; then
+            echo "::error title=${{ github.job }}: Cache hit returned false"
+            exit 1
+          else
+            ls -laR "$CACHE_PATH"
+          fi
+
+      # Check imported environment variable PUSH_ENABLED
+      - name: "check 'push_enabled'"
+        id: workflow_env_push_enabled
+        env:
+          PUSH_ENABLED: ${{ inputs.push_enabled }}
+        run: |
+          FAIL_STEP=0
+          if [[ "${PUSH_ENABLED,,}" == "true" ]]; then
+            echo "push_enabled=true" >> $GITHUB_OUTPUT
+          elif [[ "${PUSH_ENABLED,,}" == "false" ]]; then
+            echo "push_enabled=false" >> $GITHUB_OUTPUT
+          else
+            echo "::error title=${{ github.job }}: Environment variable invalid::push_enabled should be 'true' or 'false'"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable PUSH_DESTINATIONS
+      - name: "check 'push_destinations'"
+        id: workflow_env_push_destinations
+        if: ${{ steps.workflow_env_push_enabled.outputs.push_enabled == 'true' }}
+        env:
+          PUSH_DESTINATIONS: ${{ inputs.push_destinations }}
+        run: |
+          FAIL_STEP=0
+          echo "ghcr_io_enabled=false" >> $GITHUB_OUTPUT
+          echo "dockerhub_enabled=false" >> $GITHUB_OUTPUT
+          IFS=';' read -r -a PUSH_DESTINATIONS_ARRAY <<< "$PUSH_DESTINATIONS"
+          for PUSH_DESTINATION in "${PUSH_DESTINATIONS_ARRAY[@]}"; do
+            if [[ "${PUSH_DESTINATION,,}" == 'ghcr.io' ]]; then
+              echo "ghcr_io_enabled=true" >> $GITHUB_OUTPUT
+            elif [[ "${PUSH_DESTINATION,,}" == 'dockerhub' ]]; then
+              echo "dockerhub_enabled=true" >> $GITHUB_OUTPUT
+            else
+              echo "::error title=${{ github.job }}: Environment variable invalid::push_destinations includes '$PUSH_DESTINATION'. Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
+              FAIL_STEP=1
+            fi
+          done
+          exit $FAIL_STEP
+
+      # Check imported environment variable dockerhub_profile
+      - name: "check 'dockerhub_profile'"
+        id: workflow_env_dockerhub_profile
+        if: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled == 'true' }}
+        env:
+          DOCKERHUB_PROFILE: ${{ inputs.dockerhub_profile }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${DOCKERHUB_PROFILE}" ]]; then
+            echo "dockerhub_profile=$DOCKERHUB_PROFILE" >> $GITHUB_OUTPUT
+          else
+            echo "::error title=${{ github.job }}: Environment variable invalid::DOCKERHUB_PROFILE is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable dockerhub_username
+      - name: "check 'dockerhub_username'"
+        id: workflow_env_dockerhub_username
+        if: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled == 'true' }}
+        env:
+          DOCKERHUB_USERNAME: ${{ inputs.dockerhub_username }}
+          DOCKERHUB_PROFILE: ${{ steps.workflow_env_dockerhub_profile.outputs.dockerhub_profile }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${DOCKERHUB_USERNAME}" ]]; then
+            echo "dockerhub_username=$DOCKERHUB_USERNAME" >> $GITHUB_OUTPUT
+          elif [[ -n "${DOCKERHUB_PROFILE}" ]]; then
+            echo "dockerhub_username=$DOCKERHUB_PROFILE" >> $GITHUB_OUTPUT
+          else
+            echo "::error title=${{ github.job }}: Environment variables invalid::dockerhub_username and dockerhub_profile are empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable dockerhub_repo
+      - name: "check 'dockerhub_repo'"
+        id: workflow_env_dockerhub_repo
+        if: ${{ steps.workflow_env_push_destinations.outputs.dockerhub_enabled == 'true' }}
+        env:
+          DOCKERHUB_REPO: ${{ inputs.dockerhub_repo }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${DOCKERHUB_REPO}" ]]; then
+            echo "dockerhub_repo=$DOCKERHUB_REPO" >> $GITHUB_OUTPUT
+          else
+            echo "::error title=${{ github.job }}: Environment variable invalid::dockerhub_repo is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable ghcr_repo
+      - name: "check 'ghcr_repo'"
+        id: workflow_env_ghcr_repo
+        if: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled == 'true' }}
+        env:
+          GHCR_REPO: ${{ inputs.ghcr_repo }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${GHCR_REPO}" ]]; then
+            echo "ghcr_repo=${GHCR_REPO,,}" >> $GITHUB_OUTPUT
+          else
+            echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variable ghcr_repo
+      - name: "check 'ghcr_repo_owner'"
+        id: workflow_env_ghcr_repo_owner
+        if: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled == 'true' }}
+        env:
+          GHCR_REPO_OWNER: ${{ inputs.ghcr_repo_owner }}
+        run: |
+          FAIL_STEP=0
+          if [[ -n "${GHCR_REPO_OWNER}" ]]; then
+            echo "ghcr_repo_owner=${GHCR_REPO_OWNER,,}" >> $GITHUB_OUTPUT
+          else
+            echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo_owner is empty"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables PLATFORM_<platform>_ENABLED
+      - name: "check 'PLATFORM_<platform>_ENABLED'"
+        id: workflow_env_platform_enabled
+        env:
+          PLATFORM_LINUX_ARM32V7_ENABLED: ${{ inputs.platform_linux_arm32v7_enabled }}
+          PLATFORM_LINUX_ARM64V8_ENABLED: ${{ inputs.platform_linux_arm64v8_enabled }}
+          PLATFORM_LINUX_AMD64_ENABLED: ${{ inputs.platform_linux_amd64_enabled }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          NUM_ARCHES=0
+          if [[ "${PLATFORM_LINUX_ARM32V7_ENABLED,,}" == "true" ]]; then
+            echo "linux_arm32v7=true" >> $GITHUB_OUTPUT
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "${PLATFORM_LINUX_ARM64V8_ENABLED,,}" == "true" ]]; then
+            echo "linux_arm64=true" >> $GITHUB_OUTPUT
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "${PLATFORM_LINUX_AMD64_ENABLED,,}" == "true" ]]; then
+            echo "linux_amd64=true" >> $GITHUB_OUTPUT
+            NUM_ARCHES=$((NUM_ARCHES+1))
+          fi
+          if [[ "$NUM_ARCHES" -le 0 ]]; then
+            echo "::error title=${{ github.job }}: Environment variable invalid::platform_<platform>_enabled need at least one platform enabled"
+            FAIL_STEP=1
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_enabled
+      - name: "check 'build_enabled'"
+        id: workflow_env_build_multi_arch
+        env:
+          BUILD: ${{ inputs.build_enabled }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD,,}" == "true" ]]; then
+            echo "build_multi_arch_enabled=true" >> $GITHUB_OUTPUT
+            MULTI_ARCH_ARRAY=()
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/arm/v6")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v7 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/arm/v7")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm64 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/arm64")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_amd64 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/amd64")
+            fi
+            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}" == "true" ]]; then
+              MULTI_ARCH_ARRAY+=("linux/i386")
+            fi
+            printf -v MULTI_ARCH_CSV '%s,' "${MULTI_ARCH_ARRAY[@]}"
+            echo "multi_arch_csv=${MULTI_ARCH_CSV::-1}" >> $GITHUB_OUTPUT
+            printf -v MULTI_ARCH_JSON '"%s",' "${MULTI_ARCH_ARRAY[@]}"
+            echo "multi_arch_matrix_json={\"platform\":[${MULTI_ARCH_JSON::-1}]}" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_latest
+      - name: "check 'build_latest'"
+        id: workflow_env_build_latest
+        env:
+          BUILD_LATEST: ${{ inputs.build_latest }}
+          DOCKER_LATEST_TAG: ${{ inputs.docker_latest_tag }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_LATEST,,}" == "true" ]]; then
+            echo "build_latest=true" >> $GITHUB_OUTPUT
+          fi
+
+          if [[ -z "${DOCKER_LATEST_TAG}" ]]; then
+              echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_LATEST_TAG is empty"
+              FAIL_STEP=1
+            else
+              echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> $GITHUB_OUTPUT
+          fi
+
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_latest
+      - name: "check 'build_test'"
+        id: workflow_env_build_test
+        env:
+          BUILD_TEST: ${{ inputs.build_test }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_TEST,,}" == "true" ]]; then
+            echo "build_test=true" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables build_baseimage_test
+
+      - name: "check 'build_baseimage_test'"
+        id: workflow_env_build_baseimage_test
+        env:
+          BUILD_BASEIMAGE_TEST: ${{ inputs.build_baseimage_test }}
+          BUILD_BASEIMAGE_URL: ${{ inputs.build_baseimage_url }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_BASEIMAGE_TEST,,}" == "true" ]]; then
+            echo "build_baseimage_test=true" >> $GITHUB_OUTPUT
+            if [[ -z "${BUILD_BASEIMAGE_URL}" ]]; then
+              echo "::error title=${{ github.job }}: Environment variable invalid::BUILD_BASEIMAGE_URL is empty"
+              FAIL_STEP=1
+            else
+              echo "build_baseimage_url=${BUILD_BASEIMAGE_URL}" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "build_baseimage_test=false" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+
+      # Check imported environment variables docker_build_*
+      - name: "check 'docker_build_*'"
+        id: workflow_env_build
+        env:
+          DOCKER_BUILD_CONTEXT: ${{ inputs.docker_build_context }}
+          DOCKER_BUILD_FILE: ${{ inputs.docker_build_file }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ -n "${DOCKER_BUILD_CONTEXT}" ]]; then
+            echo "context=${DOCKER_BUILD_CONTEXT}" >> $GITHUB_OUTPUT
+          else
+            FAIL_STEP=1
+            echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_BUILD_CONTEXT is empty"
+          fi
+          if [[ -n "${DOCKER_BUILD_FILE}" ]]; then
+            echo "file=${DOCKER_BUILD_FILE}" >> $GITHUB_OUTPUT
+          else
+            FAIL_STEP=1
+            echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_BUILD_FILE is empty"
+          fi
+          exit $FAIL_STEP
+
+      # check for import environment variables build_with_tmpfs
+      - name: "check 'build_with_tmpfs'"
+        id: workflow_env_build_with_tmpfs
+        env:
+          BUILD_WITH_TMPFS: ${{ inputs.build_with_tmpfs }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ "${BUILD_WITH_TMPFS,,}" == "true" ]]; then
+            echo "build_with_tmpfs=true" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+
+      - name: "check dockerfile_changes"
+        id: workflow_env_dockerfile_changes
+        env:
+          DOCKERFILE_CHANGES: ${{ inputs.dockerfile_changes }}
+        run: |
+          set -x
+          FAIL_STEP=0
+          if [[ -n "${DOCKERFILE_CHANGES}" ]]; then
+            echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> $GITHUB_OUTPUT
+          fi
+          exit $FAIL_STEP
+  build:
+    name: Build (manifest)
+    if: ${{ needs.workflows_env.outputs.build_multi_arch }}
+    runs-on: ubuntu-22.04
+    needs: [workflows_env]
+
+    steps:
+      # Check out code
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      # Populate cache
+      - name: "check 'cache_enabled'"
+        if: ${{ inputs.cache_enabled }}
+        id: populate_cache
+        uses: actions/cache@v4.2.3
+        with:
+          path: ${{ inputs.cache_path }}
+          key: ${{ inputs.cache_key }}
+
+      # Log into dockerhub
+      - name: Login to DockerHub
+        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
+        uses: docker/login-action@v3.4.0
+        with:
+          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
+          password: ${{ secrets.dockerhub_token }}
+
+      # Log into ghcr.io
+      - name: Login to GitHub Container Registry
+        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
+        uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
+          password: ${{ secrets.ghcr_token }}
+
+      # Set up QEMU for multi-arch builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+
+      - name: Run Docker on tmpfs
+        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
+        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
+        with:
+          tmpfs_size: 10
+          swap_size: 10
+          swap_location: "/mnt/swapfile"
+
+      # Set up buildx
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3.10.0
+
+      - name: Change dockerfile
+        id: change_dockerfile
+        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
+        run: |
+          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
+            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
+          fi
+
+      # Patch dockerfile to use correct base image
+      - name: Patch Dockerfile to correct base image
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
+        run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
+
+      - name: Copy dockerfile to correct name
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
+        run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
+
+      # Cache build of linux/amd64 image & get image version from build output
+      - name: Cache build of image
+        id: cache_build
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          platforms: linux/amd64
+          tags: cached_build:latest
+          load: true
+
+      # Determine image names/tags
+      - name: Determine image names/tags
+        id: image_names_tags
+        run: |
+          set -x
+          IMAGE_NAMES=()
+          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
+            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
+            IMAGE_NAMES+=("test_build")
+          fi
+          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
+          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
+          IMAGE_TAGS=()
+          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
+            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}")
+            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-build-$GITHUB_RUN_NUMBER")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.build_test }}" == "true" ]]; then
+            IMAGE_TAGS+=("test")
+          fi
+          if [[ "${{ needs.workflows_env.outputs.build_baseimage_test }}" == "true" ]]; then
+            if [[ "${{ needs.workflows_env.outputs.build_latest_tag }}" == "latest" ]]; then
+              IMAGE_TAGS+=("baseimage-test")
+            else
+              IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-baseimage-test")
+            fi
+          fi
+          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
+          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          IMAGE_FULL_TAGS=()
+          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
+            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
+              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
+            done
+          done
+          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
+          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+
+      # Get metadata from repo
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5.7.0
+        with:
+          images: ${{ steps.image_names_tags.outputs.names }}
+
+      # Build & push final images
+      - name: Build & Push Final Image
+        id: final_build
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          platforms: ${{ needs.workflows_env.outputs.platforms_csv }}
+          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ needs.workflows_env.outputs.push_enabled }}
+
+      # Report images
+      - name: Log images built & pushed
+        if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
+        run: |
+          echo "::notice title=${{ github.job }} (manifest): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
