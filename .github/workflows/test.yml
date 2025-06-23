@@ -81,6 +81,7 @@ jobs:
     uses: ./.github/workflows/sdre.yml
     with:
       push_enabled: false
+      build_latest: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       cache_enabled: true
