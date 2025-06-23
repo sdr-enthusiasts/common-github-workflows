@@ -507,8 +507,8 @@ jobs:
             TARGET_NAME: linux/arm/v7
     needs: [workflows_env]
     outputs:
-      docker_tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
-      docker_full_name_tags: ${{ steps.image_names_tags.outputs.tags }}
+      docker_full_name_tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
+      docker_tags: ${{ steps.image_names_tags.outputs.tags }}
     steps:
       - name: Prepare
         id: prepare
@@ -711,7 +711,7 @@ jobs:
             IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
           fi
 
-          IFS=',' read -r -a TAGS <<< "${{ needs.build.outputs.docker_tags.tags }}"
+          IFS=',' read -r -a TAGS <<< "${{ needs.build.outputs.docker_tags }}"
 
           for tag in "${TAGS[@]}"; do
             echo "Processing tag: $tag"

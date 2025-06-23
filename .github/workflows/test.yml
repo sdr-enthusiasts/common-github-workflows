@@ -20,6 +20,7 @@ jobs:
       ghcr_repo: ${{ github.repository }}
       build_latest: true
       build_baseimage_test: false
+
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
