@@ -160,6 +160,7 @@ jobs:
       build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
       build_baseimage_url: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_url }} # THE WHOLE SED STATEMENT!!!!
       dockerfile_changes: ${{ steps.workflow_env_dockerfile_changes.outputs.dockerfile_changes }}
+      digest_id: ${{ steps.export_digest.outputs.digest_id }}
 
     steps:
       # Check out code
@@ -167,6 +168,13 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
+
+      - name: Export id
+        id: export_digest
+        run: |
+          # create a unique id for the digest
+          id="$(uuidgen)"
+          echo "digest_id=$id" >> $GITHUB_OUTPUT
 
       # check cache
       - name: "check 'cache_enabled'"
@@ -501,12 +509,12 @@ jobs:
     outputs:
       docker_tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
       docker_full_name_tags: ${{ steps.image_names_tags.outputs.tags }}
-      digest_id: ${{ steps.export_digest.outputs.digest_id }}
     steps:
       - name: Prepare
+        id: prepare
         run: |
           platform=${{ matrix.TARGET_NAME}}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
       # Check out code
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -635,18 +643,18 @@ jobs:
         id: export_digest
         run: |
           # create a unique id for the digest
-          id="$(uuidgen)"
+          id="${{ needs.workflows_env.outputs.digest_id }}"
           mkdir -p ${{ runner.temp }}/$id/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "${{ runner.temp }}/$id/digests/${digest#sha256:}"
-          echo "digest_id=$id" >> $GITHUB_OUTPUT
           echo "Output digest directory: ${{ runner.temp }}/$id/digests"
+          ls -la ${{ runner.temp }}/$id/digests
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ steps.export_digest.outputs.digest_id }}-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/${{ steps.export_digest.outputs.digest_id }}/digests/*
+          name: digests-${{ needs.workflows_env.outputs.digest_id }}-${{ steps.prepare.outputs.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/${{ needs.workflows_env.outputs.digest_id }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
@@ -687,7 +695,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/${{ needs.build.outputs.digest_id }}/digests
+        working-directory: ${{ runner.temp }}/${{ needs.workflows_env.outputs.digest_id }}/digests
         run: |
           # if we aren't pushing, we don't need to do anything
           if [[ "${{ needs.workflows_env.outputs.push_enabled }}" != "true" ]]; then
