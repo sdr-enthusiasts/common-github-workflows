@@ -85,11 +85,6 @@ on:
         type: boolean
         required: false
         default: false
-      get_version_method:
-        description: "The method to get the version of the image"
-        type: string
-        required: false
-        default: "file_in_container:file=/IMAGE_VERSION"
       build_with_tmpfs:
         description: "Set to true to build with tmpfs"
         type: boolean

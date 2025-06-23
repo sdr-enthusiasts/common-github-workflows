@@ -11,122 +11,37 @@ on:
       - main
 
 jobs:
-  build_only_version_file_in_container:
-    name: "Build only, version: file_in_container"
+  build:
     uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: false
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      get_version_method: file_in_container:file=/IMAGE_VERSION
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_only_version_cargo_toml_file_in_image:
-    name: "Build only, version: cargo_toml_file_in_image"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: false
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_only_version_cargo_toml_file_in_repo:
-    name: "Build only, version: cargo_toml_file_in_repo"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: false
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_only_version_git_commit_hash_short:
-    name: "Build only, version: git_commit_hash_short"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: false
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      get_version_method: git_commit_hash_short
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_push_version_file_in_container:
-    name: "Build & Push, version: file_in_container"
-    uses: ./.github/workflows/build_and_push_image.yml
+    name: "Build & Push Test"
     with:
       push_enabled: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_push_version_cargo_toml_file_in_image:
-    name: "Build & Push, version: cargo_toml_file_in_image"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: true
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_push_version_cargo_toml_file_in_repo:
-    name: "Build & Push, version: cargo_toml_file_in_repo"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: true
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_push_version_git_commit_hash_short:
-    name: "Build & Push, version: git_commit_hash_short"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: true
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      get_version_method: git_commit_hash_short
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_only_nohealthcheck:
-    name: "Build only, nohealthcheck"
-    uses: ./.github/workflows/build_and_push_image.yml
-    with:
-      push_enabled: false
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build_push_nohealthcheck:
-    uses: ./.github/workflows/build_and_push_image.yml
-    name: "Build & Push, nohealthcheck"
-    with:
-      push_enabled: true
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+      build_latest: true
+      build_baseimage_test: false
 
   build_test:
     uses: ./.github/workflows/build_and_push_image.yml
-    name: "Build & Push Test, nohealthcheck"
+    name: "Build & Push Test"
     with:
       push_enabled: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
       build_latest: false
       build_test: true
+
+  build_baseimage_test:
+    uses: ./.github/workflows/build_and_push_image.yml
+    name: "Build & Push Test base image"
+    with:
+      push_enabled: true
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      build_latest: false
+      build_baseimage_test: true
+      # should not change anything, but why not
+      build_baseimage_url: :acars-decoder-soapy/:acars-decoder-soapy-test-pr
 
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
