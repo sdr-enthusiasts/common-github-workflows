@@ -711,7 +711,7 @@ jobs:
             IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
           fi
 
-          IFS=',' read -r -a TAGS <<< "${{ needs.build.outputs.docker_tags }}"
+          IFS=',' read -r -a TAGS <<< "${{ needs.build.outputs.docker_tags.tags }}"
 
           for tag in "${TAGS[@]}"; do
             echo "Processing tag: $tag"
