@@ -719,7 +719,7 @@ jobs:
             for image_name in "${IMAGE_NAMES[@]}"; do
               echo "Creating manifest for $image_name:$tag"
               docker buildx imagetools create -t "$image_name:$tag" \
-                $(printf '$image_name@sha256:%s ' *)
+                $(printf "$image_name@sha256:%s " *)
             done
           done
 
