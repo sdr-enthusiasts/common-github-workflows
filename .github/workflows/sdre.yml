@@ -41,12 +41,12 @@ on:
         default: ""
       ghcr_repo_owner:
         description: "The github username/profile/organisation the repo to be pushed to belongs to"
-        required: false
+        required: true
         type: string
         default: ""
       ghcr_repo:
         description: "The ghcr.io repository the image should be pushed to"
-        required: false
+        required: true
         type: string
         default: ""
       platform_linux_arm32v7_enabled:
@@ -626,7 +626,7 @@ jobs:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
           platforms: ${{ matrix.TARGET_NAME }}
-          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
+          tags: ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}
           labels: ${{ steps.meta.outputs.labels }}
           push: false
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
