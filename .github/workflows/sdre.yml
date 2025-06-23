@@ -671,7 +671,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-*
+          pattern: digests-${{ needs.workflows_env.outputs.digest_id }}-*
           merge-multiple: true
 
       # Log into dockerhub
@@ -695,7 +695,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/${{ needs.workflows_env.outputs.digest_id }}/digests
+        working-directory: ${{ runner.temp }}/digests
         run: |
           # if we aren't pushing, we don't need to do anything
           if [[ "${{ needs.workflows_env.outputs.push_enabled }}" != "true" ]]; then
