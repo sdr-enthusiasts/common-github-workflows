@@ -49,11 +49,6 @@ on:
         required: false
         type: string
         default: ""
-      platform_linux_arm32v6_enabled:
-        description: "Set to true to build for the linux/arm/v6 platform"
-        type: boolean
-        required: false
-        default: false
       platform_linux_arm32v7_enabled:
         description: "Set to true to build for the linux/arm/v7 platform"
         type: boolean
@@ -69,21 +64,12 @@ on:
         type: boolean
         required: false
         default: true
-      platform_linux_i386_enabled:
-        description: "Set to true to build for the linux/i386 platform"
-        type: boolean
-        required: false
-        default: false
       build_enabled:
         description: "Set to true to build images"
         type: boolean
         required: false
         default: true
-      build_platform_specific:
-        description: "Set to true to also build platform specific images"
-        type: boolean
-        required: false
-        default: true
+
       build_latest:
         description: "Set to true to include a latest tag"
         type: boolean
@@ -99,26 +85,11 @@ on:
         type: boolean
         required: false
         default: false
-      build_version_specific:
-        description: "Set to true to include a version tag"
-        type: boolean
-        required: false
-        default: true
-      build_version_specific_with_build_number:
-        description: "Set to true to include a version tag with build number"
-        type: boolean
-        required: false
-        default: true
       get_version_method:
         description: "The method to get the version of the image"
         type: string
         required: false
         default: "file_in_container:file=/IMAGE_VERSION"
-      build_nohealthcheck:
-        description: "Set to true to build a nohealthcheck version"
-        type: boolean
-        required: false
-        default: true
       build_with_tmpfs:
         description: "Set to true to build with tmpfs"
         type: boolean
@@ -179,26 +150,18 @@ jobs:
       dockerhub_username: ${{ steps.workflow_env_dockerhub_username.outputs.dockerhub_username }}
       ghcr_repo: ${{ steps.workflow_env_ghcr_repo.outputs.ghcr_repo}}
       ghcr_repo_owner: ${{ steps.workflow_env_ghcr_repo_owner.outputs.ghcr_repo_owner}}
-      platform_linux_arm32v6_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}
+      # platform_linux_arm32v6_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}
       platform_linux_arm32v7_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v7 }}
       platform_linux_arm64v8_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm64 }}
       platform_linux_amd64_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_amd64 }}
-      platform_linux_i386_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}
+      # platform_linux_i386_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}
       platforms_csv: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_csv }}
       platforms_matrix_json: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_matrix_json }}
       build_multi_arch: ${{ steps.workflow_env_build_multi_arch.outputs.build_multi_arch_enabled }}
-      build_single_arch: ${{ steps.workflow_env_build_single_arch.outputs.build_single_arch_enabled }}
       build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
       build_latest_tag: ${{ steps.workflow_env_build_latest.outputs.docker_latest_tag }}
       build_test: ${{ steps.workflow_env_build_test.outputs.build_test }}
       build_baseimage_test: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_test }}
-      build_version_specific: ${{ steps.workflow_env_build_version_specific.outputs.build_version_specific }}
-      get_version_method: ${{ steps.workflow_env_get_version_method.outputs.method }}
-      get version_specific_with_build_number: ${{ steps.workflow_env_build_version_specific_with_build_number.outputs.build_version_specific_with_build_number }}
-      get_version_method_file_in_container: ${{ steps.workflow_env_get_version_method.outputs.file_in_container }}
-      get_version_method_cargo_toml_file_in_image: ${{ steps.workflow_env_get_version_method.outputs.cargo_toml_file_in_image }}
-      get_version_method_cargo_toml_file_in_repo: ${{ steps.workflow_env_get_version_method.outputs.cargo_toml_file_in_repo }}
-      build_nohealthcheck: ${{ steps.workflow_env_build_nohealthcheck.outputs.build_nohealthcheck }}
       build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
       build_baseimage_url: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_url }} # THE WHOLE SED STATEMENT!!!!
       dockerfile_changes: ${{ steps.workflow_env_dockerfile_changes.outputs.dockerfile_changes }}
@@ -358,19 +321,13 @@ jobs:
       - name: "check 'PLATFORM_<platform>_ENABLED'"
         id: workflow_env_platform_enabled
         env:
-          PLATFORM_LINUX_ARM32V6_ENABLED: ${{ inputs.platform_linux_arm32v6_enabled }}
           PLATFORM_LINUX_ARM32V7_ENABLED: ${{ inputs.platform_linux_arm32v7_enabled }}
           PLATFORM_LINUX_ARM64V8_ENABLED: ${{ inputs.platform_linux_arm64v8_enabled }}
           PLATFORM_LINUX_AMD64_ENABLED: ${{ inputs.platform_linux_amd64_enabled }}
-          PLATFORM_LINUX_I386_ENABLED: ${{ inputs.platform_linux_i386_enabled }}
         run: |
           set -x
           FAIL_STEP=0
           NUM_ARCHES=0
-          if [[ "${PLATFORM_LINUX_ARM32V6_ENABLED,,}" == "true" ]]; then
-            echo "linux_arm32v6=true" >> $GITHUB_OUTPUT
-            NUM_ARCHES=$((NUM_ARCHES+1))
-          fi
           if [[ "${PLATFORM_LINUX_ARM32V7_ENABLED,,}" == "true" ]]; then
             echo "linux_arm32v7=true" >> $GITHUB_OUTPUT
             NUM_ARCHES=$((NUM_ARCHES+1))
@@ -381,10 +338,6 @@ jobs:
           fi
           if [[ "${PLATFORM_LINUX_AMD64_ENABLED,,}" == "true" ]]; then
             echo "linux_amd64=true" >> $GITHUB_OUTPUT
-            NUM_ARCHES=$((NUM_ARCHES+1))
-          fi
-          if [[ "${PLATFORM_LINUX_I386_ENABLED,,}" == "true" ]]; then
-            echo "linux_i386=true" >> $GITHUB_OUTPUT
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "$NUM_ARCHES" -le 0 ]]; then
@@ -423,19 +376,6 @@ jobs:
             echo "multi_arch_csv=${MULTI_ARCH_CSV::-1}" >> $GITHUB_OUTPUT
             printf -v MULTI_ARCH_JSON '"%s",' "${MULTI_ARCH_ARRAY[@]}"
             echo "multi_arch_matrix_json={\"platform\":[${MULTI_ARCH_JSON::-1}]}" >> $GITHUB_OUTPUT
-          fi
-          exit $FAIL_STEP
-
-      # Check imported environment variables build_platform_specific
-      - name: "check 'build_platform_specific'"
-        id: workflow_env_build_single_arch
-        env:
-          BUILD_PLATFORM_SPECIFIC: ${{ inputs.build_platform_specific }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ "${BUILD_PLATFORM_SPECIFIC,,}" == "true" ]]; then
-            echo "build_single_arch_enabled=true" >> $GITHUB_OUTPUT
           fi
           exit $FAIL_STEP
 
@@ -497,99 +437,6 @@ jobs:
           fi
           exit $FAIL_STEP
 
-      # Check imported environment variables build_version_specific
-      - name: "check 'build_version_specific'"
-        id: workflow_env_build_version_specific
-        env:
-          BUILD_VERSION_SPECIFIC: ${{ inputs.build_version_specific }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ "${BUILD_VERSION_SPECIFIC,,}" == "true" ]]; then
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-          fi
-          exit $FAIL_STEP
-
-      - name: "check 'get_version_method'"
-        id: workflow_env_get_version_method
-        if: steps.workflow_env_build_version_specific.outputs.build_version_specific == 'true'
-        env:
-          GET_VERSION_METHOD: ${{ inputs.get_version_method }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          METHOD=$(echo "$GET_VERSION_METHOD" | cut -d ":" -f 1)
-          ARGS=$(echo "$GET_VERSION_METHOD" | cut -d ":" -f 2-)
-          case "${METHOD,,}" in
-            cargo_toml_file_in_repo)
-              echo "method=cargo_toml_file_in_repo" >> $GITHUB_OUTPUT
-              FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
-              if [[ -n "$FILENAME" ]]; then
-                echo "cargo_toml_file_in_repo=$FILENAME" >> $GITHUB_OUTPUT
-              else
-                echo "::error title=${{ github.job }}: Environment variable invalid::cargo_toml_file_in_repo method requires valid 'file=' argument"
-                FAIL_STEP=1
-              fi
-              ;;
-            cargo_toml_file_in_image)
-              echo "method=cargo_toml_file_in_image" >> $GITHUB_OUTPUT
-              FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
-              if [[ -n "$FILENAME" ]]; then
-                echo "cargo_toml_file_in_image=$FILENAME" >> $GITHUB_OUTPUT
-              else
-                echo "::error title=${{ github.job }}: Environment variable invalid::cargo_toml_file_in_image method requires valid 'file=' argument"
-                FAIL_STEP=1
-              fi
-              ;;
-            file_in_container)
-              echo "method=file_in_container" >> $GITHUB_OUTPUT
-              FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
-              if [[ -n "$FILENAME" ]]; then
-                echo "file_in_container=$FILENAME" >> $GITHUB_OUTPUT
-              else
-                echo "::error title=${{ github.job }}: Environment variable invalid::file_in_container method requires valid 'file=' argument"
-                FAIL_STEP=1
-              fi
-              ;;
-            git_commit_hash_short)
-              echo "method=git_commit_hash_short" >> $GITHUB_OUTPUT
-              ;;
-            build_number)
-              echo "method=build_number" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "::error title=${{ github.job }}: Environment variable invalid::'$METHOD' method is unsupported. See documentation."
-              FAIL_STEP=1
-              ;;
-          esac
-          exit $FAIL_STEP
-
-      - name: "check 'build_version_specific_with_build_number'"
-        id: workflow_env_build_version_specific_with_build_number
-        if: steps.workflow_env_build_version_specific.outputs.build_version_specific == 'true'
-        env:
-          BUILD_VERSION_SPECIFIC_WITH_BUILD_NUMBER: ${{ inputs.build_version_specific_with_build_number }}
-          BUILD_VERSION_NUMBER: ${{ github.run_number }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ "${BUILD_VERSION_SPECIFIC_WITH_BUILD_NUMBER,,}" == "true" ]]; then
-            echo "build_version_specific_with_build_number=true" >> $GITHUB_OUTPUT
-          fi
-          exit $FAIL_STEP
-
-      - name: "check 'build_nohealthcheck'"
-        id: workflow_env_build_nohealthcheck
-        env:
-          BUILD_NOHEALTHCHECK: ${{ inputs.build_nohealthcheck }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ "${BUILD_NOHEALTHCHECK,,}" == "true" ]]; then
-            echo "build_nohealthcheck=true" >> $GITHUB_OUTPUT
-          fi
-          exit $FAIL_STEP
-
       # Check imported environment variables docker_build_*
       - name: "check 'docker_build_*'"
         id: workflow_env_build
@@ -637,192 +484,6 @@ jobs:
             echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> $GITHUB_OUTPUT
           fi
           exit $FAIL_STEP
-
-  build_platform_specific:
-    name: Build
-    if: ${{ needs.workflows_env.outputs.build_single_arch }}
-    runs-on: ubuntu-22.04
-    needs: [workflows_env]
-    strategy:
-      matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
-
-    steps:
-      # Check out code
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-
-      # Populate cache
-      - name: "check 'cache_enabled'"
-        if: ${{ inputs.cache_enabled }}
-        id: populate_cache
-        uses: actions/cache@v4.2.3
-        with:
-          path: ${{ inputs.cache_path }}
-          key: ${{ inputs.cache_key }}
-
-      # Determine single arch suffix
-      - name: Determine platform suffix
-        id: platform_suffix
-        run: |
-          set -x
-          ARCH_SUFFIX=$(echo "${{ matrix.platform }}" | tr "/" "_")
-          echo "platform_suffix=${ARCH_SUFFIX,,}" >> $GITHUB_OUTPUT
-
-      # Log into dockerhub
-      - name: Login to DockerHub
-        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
-        uses: docker/login-action@v3.4.0
-        with:
-          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
-          password: ${{ secrets.dockerhub_token }}
-
-      # Log into ghcr.io
-      - name: Login to GitHub Container Registry
-        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
-        uses: docker/login-action@v3.4.0
-        with:
-          registry: ghcr.io
-          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
-          password: ${{ secrets.ghcr_token }}
-
-      - name: Run Docker on tmpfs
-        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
-        with:
-          tmpfs_size: 10
-          swap_size: 10
-          swap_location: "/mnt/swapfile"
-
-      # Set up QEMU for multi-arch builds
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.6.0
-
-      # Set up buildx
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
-
-      - name: Change dockerfile
-        id: change_dockerfile
-        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
-        run: |
-          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
-            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
-          fi
-
-        # TODO: can we just -i these changes?
-        # Patch dockerfile to use correct base image
-      - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
-        run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
-
-      - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
-        run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
-
-      # Cache build of image & get image version from build output
-      - name: Cache build of image
-        id: cache_build
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: ${{ needs.workflows_env.outputs.docker_build_context }}
-          file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
-          platforms: ${{ matrix.platform }}
-          tags: cached_build:${{ steps.platform_suffix.outputs.platform_suffix }}
-          load: true
-
-      # Determine image version
-      - name: Determine image version
-        if: ${{ needs.workflows_env.outputs.build_version_specific }}
-        id: image_version
-        run: |
-          set -x
-          case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml_file_in_repo)
-              VERSION=$(cat ./${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_repo }} | grep -e '\[package\]' -e '\[workspace\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            cargo_toml_file_in_image)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            file_in_container)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
-              ;;
-            git_commit_hash_short)
-              GIT_HEAD=$(git rev-parse HEAD)
-              VERSION="${GIT_HEAD::7}"
-              ;;
-          esac
-
-          if [[ -z "${VERSION}" ]]; then
-            echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
-          else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
-          fi
-
-      # Determine image names/tags
-      - name: Determine image names/tags
-        id: image_names_tags
-        run: |
-          set -x
-          IMAGE_NAMES=()
-          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
-            IMAGE_NAMES+=("test_build")
-          fi
-          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
-          IMAGE_TAGS=()
-          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
-          fi
-          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
-          IMAGE_FULL_TAGS=()
-          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
-            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
-              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
-            done
-          done
-          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
-
-      # Get metadata from repo
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5.7.0
-        with:
-          images: ${{ steps.image_names_tags.outputs.names }}
-
-      # Push final image
-      - name: Build & Push Final Image
-        id: final_build
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: ${{ needs.workflows_env.outputs.docker_build_context }}
-          file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
-          platforms: ${{ matrix.platform }}
-          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ needs.workflows_env.outputs.push_enabled }}
-
-      # Report images
-      - name: Log images built & pushed
-        if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
-        run: |
-          echo "::notice title=${{ github.job }} (${{ matrix.platform }}): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
-
   build:
     name: Build (manifest)
     if: ${{ needs.workflows_env.outputs.build_multi_arch }}
@@ -907,35 +568,6 @@ jobs:
           tags: cached_build:latest
           load: true
 
-      # Determine image version
-      - name: Determine image version
-        if: ${{ needs.workflows_env.outputs.build_version_specific }}
-        id: image_version
-        run: |
-          set -x
-          case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml_file_in_repo)
-              VERSION=$(cat ./${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_repo }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            cargo_toml_file_in_image)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            file_in_container)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
-              ;;
-            git_commit_hash_short)
-              GIT_HEAD=$(git rev-parse HEAD)
-              VERSION="${GIT_HEAD::7}"
-              ;;
-          esac
-          if [[ -z "${VERSION}" ]]; then
-            echo "::warning title=${{ github.job }} (manifest): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
-          else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
-          fi
-
       # Determine image names/tags
       - name: Determine image names/tags
         id: image_names_tags
@@ -954,9 +586,6 @@ jobs:
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
           echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
           IMAGE_TAGS=()
-          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}")
-          fi
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}")
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-build-$GITHUB_RUN_NUMBER")
@@ -1004,403 +633,5 @@ jobs:
       # Report images
       - name: Log images built & pushed
         if: ${{ needs.workflows_env.outputs.push_enabled == 'true' }}
-        run: |
-          echo "::notice title=${{ github.job }} (manifest): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
-
-  build_platform_specific_nohealthcheck:
-    name: Build nohealthcheck
-    if: needs.workflows_env.outputs.build_single_arch == 'true' && needs.workflows_env.outputs.build_nohealthcheck == 'true'
-    runs-on: ubuntu-22.04
-    needs: [workflows_env]
-    strategy:
-      matrix: ${{fromJson(needs.workflows_env.outputs.platforms_matrix_json)}}
-
-    steps:
-      # Check out code
-      - name: Checkout
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-
-      # Populate cache
-      - name: "check 'cache_enabled'"
-        if: ${{ inputs.cache_enabled }}
-        id: populate_cache
-        uses: actions/cache@v4.2.3
-        with:
-          path: ${{ inputs.cache_path }}
-          key: ${{ inputs.cache_key }}
-
-      # Determine single arch suffix
-      - name: Determine platform suffix
-        id: platform_suffix
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        run: |
-          set -x
-          ARCH_SUFFIX=$(echo "${{ matrix.platform }}" | tr "/" "_")
-          echo "platform_suffix=${ARCH_SUFFIX,,}" >> $GITHUB_OUTPUT
-
-      # Log into dockerhub
-      - name: Login to DockerHub
-        if: |
-          needs.workflows_env.outputs.output_dockerhub_enabled == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.4.0
-        with:
-          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
-          password: ${{ secrets.dockerhub_token }}
-
-      # Log into ghcr.io
-      - name: Login to GitHub Container Registry
-        if: |
-          needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.4.0
-        with:
-          registry: ghcr.io
-          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
-          password: ${{ secrets.ghcr_token }}
-
-      - name: Run Docker on tmpfs
-        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
-        with:
-          tmpfs_size: 10
-          swap_size: 10
-          swap_location: "/mnt/swapfile"
-
-      # Set up QEMU for multi-arch builds
-      - name: Set up QEMU
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.6.0
-
-      # Set up buildx
-      - name: Set up Docker Buildx
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
-
-      - name: Change dockerfile
-        id: change_dockerfile
-        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
-        run: |
-          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
-            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
-          fi
-
-      # Patch dockerfile to use correct base image
-      - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
-        run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
-
-      - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
-        run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
-
-      # Patch dockerfile to remove healthcheck
-      - name: Patch Dockerfile to remove healthcheck
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        run: sed '/^HEALTHCHECK /d' < ${{ needs.workflows_env.outputs.docker_build_file }}.use > ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
-
-      # Cache build of image & get image version from build output
-      - name: Cache build of image
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: cache_build
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: ${{ needs.workflows_env.outputs.docker_build_context }}
-          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
-          platforms: ${{ matrix.platform }}
-          tags: cached_build:${{ steps.platform_suffix.outputs.platform_suffix }}
-          load: true
-
-      # Determine image version
-      - name: Determine image version
-        if: |
-          needs.workflows_env.outputs.build_version_specific == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: image_version
-        run: |
-          set -x
-          case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml_file_in_repo)
-              VERSION=$(cat ./${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_repo }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            cargo_toml_file_in_image)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            file_in_container)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:${{ steps.platform_suffix.outputs.platform_suffix }} ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
-              ;;
-            git_commit_hash_short)
-              GIT_HEAD=$(git rev-parse HEAD)
-              VERSION="${GIT_HEAD::7}"
-              ;;
-          esac
-          if [[ -z "${VERSION}" ]]; then
-            echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
-          else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
-          fi
-
-      # Determine image names/tags
-      - name: Determine image names/tags
-        id: image_names_tags
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        run: |
-          set -x
-          IMAGE_NAMES=()
-          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
-            IMAGE_NAMES+=("test_build")
-          fi
-          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
-          IMAGE_TAGS=()
-          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
-          fi
-          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
-          IMAGE_FULL_TAGS=()
-          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
-            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
-              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
-            done
-          done
-          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
-
-      # Get metadata from repo
-      - name: Extract metadata (tags, labels) for Docker
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: meta
-        uses: docker/metadata-action@v5.7.0
-        with:
-          images: ${{ steps.image_names_tags.outputs.names }}
-
-      # Push final image
-      - name: Build & Push Final Image
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: final_build
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: ${{ needs.workflows_env.outputs.docker_build_context }}
-          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
-          platforms: ${{ matrix.platform }}
-          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ needs.workflows_env.outputs.push_enabled }}
-
-      # Report images
-      - name: Log images built & pushed
-        if: |
-          needs.workflows_env.outputs.push_enabled == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        run: |
-          echo "::notice title=${{ github.job }} (${{ matrix.platform }}): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
-
-  build_nohealthcheck:
-    name: Build nohealthcheck (manifest)
-    if: needs.workflows_env.outputs.build_multi_arch == 'true' && needs.workflows_env.outputs.build_nohealthcheck == 'true'
-    runs-on: ubuntu-22.04
-    needs: [workflows_env]
-
-    steps:
-      # Check out code
-      - name: Checkout
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-
-      # Populate cache
-      - name: "check 'cache_enabled'"
-        if: ${{ inputs.cache_enabled }}
-        id: populate_cache
-        uses: actions/cache@v4.2.3
-        with:
-          path: ${{ inputs.cache_path }}
-          key: ${{ inputs.cache_key }}
-
-      # Log into dockerhub
-      - name: Login to DockerHub
-        if: |
-          needs.workflows_env.outputs.output_dockerhub_enabled == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.4.0
-        with:
-          username: ${{ needs.workflows_env.outputs.dockerhub_username }}
-          password: ${{ secrets.dockerhub_token }}
-
-      # Log into ghcr.io
-      - name: Login to GitHub Container Registry
-        if: |
-          needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.4.0
-        with:
-          registry: ghcr.io
-          username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
-          password: ${{ secrets.ghcr_token }}
-
-      - name: Run Docker on tmpfs
-        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
-        with:
-          tmpfs_size: 10
-          swap_size: 10
-          swap_location: "/mnt/swapfile"
-
-      # Set up QEMU for multi-arch builds
-      - name: Set up QEMU
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.6.0
-
-      # Set up buildx
-      - name: Set up Docker Buildx
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
-
-      - name: Change dockerfile
-        id: change_dockerfile
-        if: ${{ needs.workflows_env.outputs.dockerfile_changes }}
-        run: |
-          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
-            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
-          fi
-
-      # Patch dockerfile to use correct base image
-      - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }}
-        run: |
-          sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
-
-      - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }}
-        run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
-
-      # Patch dockerfile to remove healthcheck
-      - name: Patch Dockerfile to remove healthcheck
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        run: sed '/^HEALTHCHECK /d' < ${{ needs.workflows_env.outputs.docker_build_file }}.use > ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
-
-      # Cache build of linux/amd64 image & get image version from build output
-      - name: Cache build of image
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: cache_build
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: ${{ needs.workflows_env.outputs.docker_build_context }}
-          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
-          platforms: linux/amd64
-          tags: cached_build:latest
-          load: true
-
-      # Determine image version
-      - name: Determine image version
-        if: |
-          needs.workflows_env.outputs.build_version_specific == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: image_version
-        run: |
-          set -x
-          case "${{ needs.workflows_env.outputs.get_version_method }}" in
-            cargo_toml_file_in_repo)
-              VERSION=$(cat ./${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_repo }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            cargo_toml_file_in_image)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_cargo_toml_file_in_image }} | grep '\[package\]' -A9999 | grep -m 1 'version = ' | tr -d " " | tr -d '"' | tr -d "'" | cut -d = -f 2 )
-              ;;
-            file_in_container)
-              VERSION=$(docker run --rm --entrypoint cat cached_build:latest ${{ needs.workflows_env.outputs.get_version_method_file_in_container }})
-              ;;
-            git_commit_hash_short)
-              GIT_HEAD=$(git rev-parse HEAD)
-              VERSION="${GIT_HEAD::7}"
-              ;;
-          esac
-          if [[ -z "${VERSION}" ]]; then
-            echo "::warning title=${{ github.job }} (manifest): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
-          else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
-          fi
-
-      # Determine image names/tags
-      - name: Determine image names/tags
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: image_names_tags
-        run: |
-          set -x
-          IMAGE_NAMES=()
-          if [[ "${{ needs.workflows_env.outputs.output_dockerhub_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("${{ needs.workflows_env.outputs.dockerhub_profile }}/${{ needs.workflows_env.outputs.dockerhub_repo }}")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.output_ghcr_io_enabled }}" == 'true' ]]; then
-            IMAGE_NAMES+=("ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.push_enabled }}" == "false" ]]; then
-            IMAGE_NAMES+=("test_build")
-          fi
-          printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
-          IMAGE_TAGS=()
-          if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_nohealthcheck")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_nohealthcheck")
-          fi
-          printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
-          IMAGE_FULL_TAGS=()
-          for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
-            for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
-              IMAGE_FULL_TAGS+=("$IMAGE_NAME:$IMAGE_TAG")
-            done
-          done
-          printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
-
-      # Get metadata from repo
-      - name: Extract metadata (tags, labels) for Docker
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: meta
-        uses: docker/metadata-action@v5.7.0
-        with:
-          images: ${{ steps.image_names_tags.outputs.names }}
-
-      # Build & push final images
-      - name: Build & Push Final Image
-        if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        id: final_build
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: ${{ needs.workflows_env.outputs.docker_build_context }}
-          file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
-          platforms: ${{ needs.workflows_env.outputs.platforms_csv }}
-          tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ needs.workflows_env.outputs.push_enabled }}
-
-      # Report images
-      - name: Log images built & pushed
-        if: |
-          needs.workflows_env.outputs.push_enabled == 'true' &&
-          needs.workflows_env.outputs.build_nohealthcheck == 'true'
         run: |
           echo "::notice title=${{ github.job }} (manifest): Images built & pushed::${{ steps.image_names_tags.outputs.full_name_tags }}"
