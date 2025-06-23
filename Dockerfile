@@ -1,6 +1,6 @@
 # Generic image to test builds
 
-FROM debian:bullseye
+FROM debian:trixie-slim
 #hadolint ignore=DL3008,DL3003,DL3045
 COPY ./test_image_rootfs ./
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
