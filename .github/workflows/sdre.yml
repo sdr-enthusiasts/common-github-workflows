@@ -217,7 +217,7 @@ jobs:
       # Check imported environment variable PUSH_DESTINATIONS
       - name: "check 'push_destinations'"
         id: workflow_env_push_destinations
-        if: ${{ steps.workflow_env_push_enabled.outputs.push_enabled == 'true' }}
+        # if: ${{ steps.workflow_env_push_enabled.outputs.push_enabled == 'true' }}
         env:
           PUSH_DESTINATIONS: ${{ inputs.push_destinations }}
         run: |
