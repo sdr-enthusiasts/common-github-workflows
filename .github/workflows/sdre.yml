@@ -501,7 +501,7 @@ jobs:
     outputs:
       docker_tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
       docker_full_name_tags: ${{ steps.image_names_tags.outputs.tags }}
-      digest_id: ${{ steps.build.outputs.digest }}
+      digest_id: ${{ steps.export_digest.outputs.digest_id }}
     steps:
       - name: Prepare
         run: |
@@ -633,6 +633,7 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
+        id: export_digest
         run: |
           # create a unique id for the digest
           id="$(uuidgen)"
@@ -646,7 +647,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/digests/*
+          path: ${{ runner.temp }}/${{ steps.export_digest.outputs.digest_id }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
