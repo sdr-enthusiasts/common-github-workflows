@@ -501,6 +501,7 @@ jobs:
     outputs:
       docker_tags: ${{ steps.image_names_tags.outputs.full_name_tags }}
       docker_full_name_tags: ${{ steps.image_names_tags.outputs.tags }}
+      digest_id: ${{ steps.build.outputs.digest }}
     steps:
       - name: Prepare
         run: |
@@ -633,9 +634,13 @@ jobs:
 
       - name: Export digest
         run: |
-          mkdir -p ${{ runner.temp }}/digests
+          # create a unique id for the digest
+          id="$(uuidgen)"
+          mkdir -p ${{ runner.temp }}/$id/digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+          touch "${{ runner.temp }}/$id/digests/${digest#sha256:}"
+          echo "digest_id=$id" >> $GITHUB_OUTPUT
+          echo "Output digest directory: ${{ runner.temp }}/$id/digests"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
@@ -682,7 +687,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/digests
+        working-directory: ${{ runner.temp }}/${{ needs.build.outputs.digest_id }}/digests
         run: |
           # if we aren't pushing, we don't need to do anything
           if [[ "${{ needs.workflows_env.outputs.push_enabled }}" != "true" ]]; then

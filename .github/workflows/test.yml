@@ -13,7 +13,7 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/sdre.yml
-    name: "Build & Push Test"
+    name: "Build & Push Latest"
     with:
       push_enabled: true
       ghcr_repo_owner: mikenye
