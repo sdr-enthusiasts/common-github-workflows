@@ -18,9 +18,6 @@ jobs:
       push_enabled: false
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
       get_version_method: file_in_container:file=/IMAGE_VERSION
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
@@ -32,9 +29,6 @@ jobs:
       push_enabled: false
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
       get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
@@ -46,9 +40,6 @@ jobs:
       push_enabled: false
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
       get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
@@ -60,9 +51,6 @@ jobs:
       push_enabled: false
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
       get_version_method: git_commit_hash_short
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
@@ -74,9 +62,6 @@ jobs:
       push_enabled: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -87,9 +72,6 @@ jobs:
       push_enabled: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
       get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
@@ -101,9 +83,6 @@ jobs:
       push_enabled: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
       get_version_method: cargo_toml_file_in_repo:file=/test_image_rootfs/Cargo.toml
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
@@ -115,9 +94,6 @@ jobs:
       push_enabled: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
-      build_nohealthcheck: false
       get_version_method: git_commit_hash_short
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
@@ -129,8 +105,6 @@ jobs:
       push_enabled: false
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -141,8 +115,6 @@ jobs:
       push_enabled: true
       ghcr_repo_owner: mikenye
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
