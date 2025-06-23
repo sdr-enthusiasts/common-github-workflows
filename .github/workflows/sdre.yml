@@ -629,7 +629,6 @@ jobs:
           platforms: ${{ matrix.TARGET_NAME }}
           tags: ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: false
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
@@ -646,7 +645,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ steps.export_digest.outputs.digest_id }}-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/${{ steps.export_digest.outputs.digest_id }}/digests/*
           if-no-files-found: error
           retention-days: 1
