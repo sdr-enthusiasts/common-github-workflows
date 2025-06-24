@@ -526,7 +526,7 @@ jobs:
 
       # Populate cache
       - name: "check 'cache_enabled'"
-        if: ${{ inputs.cache_enabled }} && ${{ matrix.ENABLED}}
+        if: ${{ inputs.cache_enabled }} && ${{ matrix.ENABLED == 'true' }}
         id: populate_cache
         uses: actions/cache@v4.2.3
         with:
@@ -535,7 +535,7 @@ jobs:
 
       # Log into dockerhub
       - name: Login to DockerHub
-        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }} && ${{ matrix.ENABLED}}
+        if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }} && ${{ matrix.ENABLED == 'true' }}
         uses: docker/login-action@v3.4.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
@@ -543,7 +543,7 @@ jobs:
 
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
-        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }} && ${{ matrix.ENABLED}}
+        if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }} && ${{ matrix.ENABLED == 'true' }}
         uses: docker/login-action@v3.4.0
         with:
           registry: ghcr.io
@@ -551,7 +551,7 @@ jobs:
           password: ${{ secrets.ghcr_token }}
 
       - name: Run Docker on tmpfs
-        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }} && ${{ matrix.ENABLED }}
+        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }} && ${{ matrix.ENABLED == 'true' }}
         uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
         with:
           tmpfs_size: 10
@@ -566,7 +566,7 @@ jobs:
 
       - name: Change dockerfile
         id: change_dockerfile
-        if: ${{ needs.workflows_env.outputs.dockerfile_changes }} && ${{ matrix.ENABLED }}
+        if: ${{ needs.workflows_env.outputs.dockerfile_changes }} && ${{ matrix.ENABLED == 'true' }}
         run: |
           if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
             sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
@@ -574,11 +574,11 @@ jobs:
 
       # Patch dockerfile to use correct base image
       - name: Patch Dockerfile to correct base image
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }} && ${{ matrix.ENABLED }}
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true' }} && ${{ matrix.ENABLED == 'true' }}
         run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       - name: Copy dockerfile to correct name
-        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }} && ${{ matrix.ENABLED }}
+        if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false' }} && ${{ matrix.ENABLED == 'true' }}
         run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
 
       # Determine image names/tags
