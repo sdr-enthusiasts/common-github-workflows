@@ -492,17 +492,18 @@ jobs:
     if: ${{ needs.workflows_env.outputs.build_multi_arch }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            if: ${{ inputs.platform_linux_amd64_enabled }}
+            if: ${{ inputs.platform_linux_amd64_enabled }} == 'true'
             TARGET_NAME: linux/amd64
           - os: ubuntu-24.04-arm
-            if: ${{ inputs.platform_linux_arm64v8_enabled }}
+            if: ${{ inputs.platform_linux_arm64v8_enabled }} == 'true'
             arch: arm64
             TARGET_NAME: linux/arm64
           - os: ubuntu-24.04-arm
-            if: ${{ inputs.platform_linux_arm32v7_enabled }}
+            if: ${{ inputs.platform_linux_arm32v7_enabled }} == 'true'
             arch: arm32
             TARGET_NAME: linux/arm/v7
     needs: [workflows_env]
