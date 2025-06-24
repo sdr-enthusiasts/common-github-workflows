@@ -3,7 +3,7 @@
 Common GitHub workflows used by sdr-enthusiasts' CI/CD workflows.
 
 - [sdr-enthusiasts/common-github-workflows](#sdr-enthusiastscommon-github-workflows)
-  - [Build & Push Docker Images](#build--push-docker-images)
+  - [Build \& Push Docker Images](#build--push-docker-images)
     - [Example](#example)
     - [Inputs](#inputs)
       - [`get_version_method`](#get_version_method)
@@ -28,13 +28,11 @@ on:
 
 jobs:
   build_and_push:
-    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+    uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@main
     with:
       push_enabled: true
       ghcr_repo_owner: ${{ github.repository_owner }}
       ghcr_repo: ${{ github.repository }}
-      platform_linux_arm32v6_enabled: true
-      platform_linux_i386_enabled: true
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -81,7 +79,7 @@ Example:
 
 ```yaml
 build_and_push:
-  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@main
   with:
     get_version_method: cargo_toml_file_in_image:file=/Cargo.toml
 ```
@@ -96,7 +94,7 @@ Example:
 
 ```yaml
 build_and_push:
-  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@main
   with:
     get_version_method: cargo_toml_file_in_repo:file=/Cargo.toml
 ```
@@ -111,7 +109,7 @@ Example:
 
 ```yaml
 build_and_push:
-  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@main
   with:
     get_version_method: file_in_container:file=/IMAGE_VERSION
 ```
@@ -126,7 +124,7 @@ Example:
 
 ```yaml
 build_and_push:
-  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/build_and_push_image.yml@main
+  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@main
   with:
     get_version_method: git_commit_hash_short
 ```
