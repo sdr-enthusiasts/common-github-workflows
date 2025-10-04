@@ -536,7 +536,7 @@ jobs:
       # Log into dockerhub
       - name: Login to DockerHub
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true'  &&   matrix.ENABLED }}
-        uses: docker/login-action@v3.5.0
+        uses: docker/login-action@v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -544,7 +544,7 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true'  &&   matrix.ENABLED }}
-        uses: docker/login-action@v3.5.0
+        uses: docker/login-action@v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
@@ -686,7 +686,7 @@ jobs:
       # Log into dockerhub
       - name: Login to DockerHub
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
-        uses: docker/login-action@v3.5.0
+        uses: docker/login-action@v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -694,7 +694,7 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
-        uses: docker/login-action@v3.5.0
+        uses: docker/login-action@v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
