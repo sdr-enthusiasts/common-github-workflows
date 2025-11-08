@@ -699,7 +699,7 @@ jobs:
 
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.6.0
+        uses: docker/setup-qemu-action@v3.7.0
 
       # Set up buildx
       - name: Set up Docker Buildx
@@ -866,7 +866,7 @@ jobs:
 
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.6.0
+        uses: docker/setup-qemu-action@v3.7.0
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
@@ -1075,7 +1075,7 @@ jobs:
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.6.0
+        uses: docker/setup-qemu-action@v3.7.0
 
       # Set up buildx
       - name: Set up Docker Buildx
@@ -1268,7 +1268,7 @@ jobs:
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.6.0
+        uses: docker/setup-qemu-action@v3.7.0
 
       # Set up buildx
       - name: Set up Docker Buildx
