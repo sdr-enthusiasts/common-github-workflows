@@ -629,7 +629,7 @@ jobs:
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         if: ${{ matrix.ENABLED }}
-        uses: docker/metadata-action@v5.9.0
+        uses: docker/metadata-action@v5.10.0
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
