@@ -660,7 +660,7 @@ jobs:
 
       - name: Upload digest
         if: ${{ matrix.ENABLED }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: digests-${{ needs.workflows_env.outputs.digest_id }}-${{ steps.prepare.outputs.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/${{ needs.workflows_env.outputs.digest_id }}/digests/*
