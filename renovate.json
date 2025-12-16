@@ -12,11 +12,11 @@
   },
   "timezone": "Etc/UTC",
   "schedule": ["* 0 1 * *"],
-  "enabledManagers": ["nix", "github-actions"],
+  "enabledManagers": ["nix", "github-actions", "docker"],
   "prConcurrentLimit": 0,
   "prHourlyLimit": 0,
   "prCreation": "immediate",
-  "automerge": false,
+  "automerge": true,
   "platformAutomerge": true,
   "nix": {
     "enabled": true
@@ -25,7 +25,7 @@
     {
       "matchManagers": ["github-actions", "nix"],
       "matchUpdateTypes": ["major", "minor", "patch", "pin"],
-      "automerge": false
+      "automerge": true
     }
   ]
 }
