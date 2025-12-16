@@ -87,3 +87,33 @@ jobs:
       cache_key: ${{ github.run_id }}
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  all_tests_passed:
+    name: All tests passed legacy
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - build_test
+      - build_baseimage_test
+      - populate_cache
+      - check_cache
+    if: always()
+    steps:
+      - name: Verify all required jobs succeeded
+        run: |
+          echo "build: ${{ needs.build.result }}"
+          echo "build_test: ${{ needs.build_test.result }}"
+          echo "build_baseimage_test: ${{ needs.build_baseimage_test.result }}"
+          echo "populate_cache: ${{ needs.populate_cache.result }}"
+          echo "check_cache: ${{ needs.check_cache.result }}"
+
+          if [[ "${{ needs.build.result }}" != "success" ]] ||
+             [[ "${{ needs.build_test.result }}" != "success" ]] ||
+             [[ "${{ needs.build_baseimage_test.result }}" != "success" ]] ||
+             [[ "${{ needs.populate_cache.result }}" != "success" ]] ||
+             [[ "${{ needs.check_cache.result }}" != "success" ]]; then
+            echo "❌ One or more jobs failed"
+            exit 1
+          fi
+
+          echo "✅ All jobs succeeded"
