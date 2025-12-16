@@ -1,6 +1,6 @@
 # Generic image to test builds
 
-FROM debian:trixie-slim
+FROM debian:trixie-20251208-slim
 
 WORKDIR /opt/sdre
 COPY ./test_image_rootfs ./
