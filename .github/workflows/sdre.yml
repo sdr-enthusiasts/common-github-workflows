@@ -165,7 +165,7 @@ jobs:
     steps:
       # Check out code
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -180,7 +180,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: workflow_env_check_cache
-        uses: actions/cache@v5.0.1
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -520,7 +520,7 @@ jobs:
       # Check out code
       - name: Checkout
         if: ${{ matrix.ENABLED }}
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -528,7 +528,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled && matrix.ENABLED }}
         id: populate_cache
-        uses: actions/cache@v5.0.1
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -536,7 +536,7 @@ jobs:
       # Log into dockerhub
       - name: Login to DockerHub
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true'  &&   matrix.ENABLED }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -544,7 +544,7 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true'  &&   matrix.ENABLED }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
@@ -552,7 +552,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true'  &&   matrix.ENABLED }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -562,7 +562,7 @@ jobs:
       - name: Set up Docker Buildx
         if: ${{ matrix.ENABLED }}
         id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -629,7 +629,7 @@ jobs:
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         if: ${{ matrix.ENABLED }}
-        uses: docker/metadata-action@v5.10.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
@@ -637,7 +637,7 @@ jobs:
       - name: Build & Push Final Image
         id: build
         if: ${{ matrix.ENABLED }}
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
@@ -660,7 +660,7 @@ jobs:
 
       - name: Upload digest
         if: ${{ matrix.ENABLED }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: digests-${{ needs.workflows_env.outputs.digest_id }}-${{ steps.prepare.outputs.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/${{ needs.workflows_env.outputs.digest_id }}/digests/*
@@ -677,7 +677,7 @@ jobs:
       id-token: write
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           path: ${{ runner.temp }}/digests
           pattern: digests-${{ needs.workflows_env.outputs.digest_id }}-*
@@ -686,7 +686,7 @@ jobs:
       # Log into dockerhub
       - name: Login to DockerHub
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -694,14 +694,14 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
           password: ${{ secrets.ghcr_token }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests

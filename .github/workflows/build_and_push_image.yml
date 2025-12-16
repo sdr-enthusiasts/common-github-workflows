@@ -208,7 +208,7 @@ jobs:
     steps:
       # Check out code
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -216,7 +216,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: workflow_env_check_cache
-        uses: actions/cache@v5.0.1
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -651,7 +651,7 @@ jobs:
     steps:
       # Check out code
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -659,7 +659,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v5.0.1
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -675,7 +675,7 @@ jobs:
       # Log into dockerhub
       - name: Login to DockerHub
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -683,7 +683,7 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
@@ -691,7 +691,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -699,12 +699,12 @@ jobs:
 
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.7.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       # Set up buildx
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -727,7 +727,7 @@ jobs:
       # Cache build of image & get image version from build output
       - name: Cache build of image
         id: cache_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
@@ -803,14 +803,14 @@ jobs:
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5.10.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
       # Push final image
       - name: Build & Push Final Image
         id: final_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
@@ -834,7 +834,7 @@ jobs:
     steps:
       # Check out code
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -842,7 +842,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v5.0.1
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -850,7 +850,7 @@ jobs:
       # Log into dockerhub
       - name: Login to DockerHub
         if: ${{ needs.workflows_env.outputs.output_dockerhub_enabled == 'true' }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -858,7 +858,7 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
@@ -866,11 +866,11 @@ jobs:
 
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.7.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -879,7 +879,7 @@ jobs:
       # Set up buildx
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -901,7 +901,7 @@ jobs:
       # Cache build of linux/amd64 image & get image version from build output
       - name: Cache build of image
         id: cache_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
@@ -987,14 +987,14 @@ jobs:
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5.10.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
       # Build & push final images
       - name: Build & Push Final Image
         id: final_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
@@ -1021,7 +1021,7 @@ jobs:
       # Check out code
       - name: Checkout
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -1029,7 +1029,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v5.0.1
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -1048,7 +1048,7 @@ jobs:
         if: |
           needs.workflows_env.outputs.output_dockerhub_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -1058,7 +1058,7 @@ jobs:
         if: |
           needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
@@ -1066,7 +1066,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -1075,13 +1075,13 @@ jobs:
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.7.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       # Set up buildx
       - name: Set up Docker Buildx
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -1109,7 +1109,7 @@ jobs:
       - name: Cache build of image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: cache_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
@@ -1188,7 +1188,7 @@ jobs:
       - name: Extract metadata (tags, labels) for Docker
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: meta
-        uses: docker/metadata-action@v5.10.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
@@ -1196,7 +1196,7 @@ jobs:
       - name: Build & Push Final Image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: final_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
@@ -1223,7 +1223,7 @@ jobs:
       # Check out code
       - name: Checkout
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -1231,7 +1231,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@v5.0.1
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -1241,7 +1241,7 @@ jobs:
         if: |
           needs.workflows_env.outputs.output_dockerhub_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: ${{ needs.workflows_env.outputs.dockerhub_username }}
           password: ${{ secrets.dockerhub_token }}
@@ -1251,7 +1251,7 @@ jobs:
         if: |
           needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' &&
           needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
@@ -1259,7 +1259,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -1268,13 +1268,13 @@ jobs:
       # Set up QEMU for multi-arch builds
       - name: Set up QEMU
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
-        uses: docker/setup-qemu-action@v3.7.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       # Set up buildx
       - name: Set up Docker Buildx
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: buildx
-        uses: docker/setup-buildx-action@v3.10.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Change dockerfile
         id: change_dockerfile
@@ -1303,7 +1303,7 @@ jobs:
       - name: Cache build of image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: cache_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
@@ -1382,7 +1382,7 @@ jobs:
       - name: Extract metadata (tags, labels) for Docker
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: meta
-        uses: docker/metadata-action@v5.10.0
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ steps.image_names_tags.outputs.names }}
 
@@ -1390,7 +1390,7 @@ jobs:
       - name: Build & Push Final Image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: final_build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
