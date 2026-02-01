@@ -729,6 +729,7 @@ jobs:
         id: cache_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
           platforms: ${{ matrix.platform }}
@@ -812,6 +813,7 @@ jobs:
         id: final_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
           platforms: ${{ matrix.platform }}
@@ -903,6 +905,7 @@ jobs:
         id: cache_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
           platforms: linux/amd64
@@ -996,6 +999,7 @@ jobs:
         id: final_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
           platforms: ${{ needs.workflows_env.outputs.platforms_csv }}
@@ -1111,6 +1115,7 @@ jobs:
         id: cache_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
           platforms: ${{ matrix.platform }}
@@ -1198,6 +1203,7 @@ jobs:
         id: final_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
           platforms: ${{ matrix.platform }}
@@ -1305,6 +1311,7 @@ jobs:
         id: cache_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
           platforms: linux/amd64
@@ -1392,6 +1399,7 @@ jobs:
         id: final_build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.nohealthcheck
           platforms: ${{ needs.workflows_env.outputs.platforms_csv }}
