@@ -691,7 +691,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@55e939ef196646234a12c245e3414879e3580f01 # v2.0.0
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -872,7 +872,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@55e939ef196646234a12c245e3414879e3580f01 # v2.0.0
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -1070,7 +1070,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@55e939ef196646234a12c245e3414879e3580f01 # v2.0.0
         with:
           tmpfs_size: 10
           swap_size: 10
@@ -1265,7 +1265,7 @@ jobs:
 
       - name: Run Docker on tmpfs
         if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true' }}
-        uses: JonasAlfredsson/docker-on-tmpfs@ae2a16dd3cd73ebbb40b0964d54d4933ee1abd99 # v1.0.1
+        uses: JonasAlfredsson/docker-on-tmpfs@55e939ef196646234a12c245e3414879e3580f01 # v2.0.0
         with:
           tmpfs_size: 10
           swap_size: 10
