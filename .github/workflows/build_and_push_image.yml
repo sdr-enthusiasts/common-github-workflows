@@ -727,7 +727,7 @@ jobs:
       # Cache build of image & get image version from build output
       - name: Cache build of image
         id: cache_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
@@ -811,7 +811,7 @@ jobs:
       # Push final image
       - name: Build & Push Final Image
         id: final_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
@@ -903,7 +903,7 @@ jobs:
       # Cache build of linux/amd64 image & get image version from build output
       - name: Cache build of image
         id: cache_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
@@ -997,7 +997,7 @@ jobs:
       # Build & push final images
       - name: Build & Push Final Image
         id: final_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
@@ -1113,7 +1113,7 @@ jobs:
       - name: Cache build of image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: cache_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
@@ -1201,7 +1201,7 @@ jobs:
       - name: Build & Push Final Image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: final_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
@@ -1309,7 +1309,7 @@ jobs:
       - name: Cache build of image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: cache_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=1,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
@@ -1397,7 +1397,7 @@ jobs:
       - name: Build & Push Final Image
         if: needs.workflows_env.outputs.build_nohealthcheck == 'true'
         id: final_build
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
