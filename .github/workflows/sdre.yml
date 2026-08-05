@@ -129,6 +129,56 @@ on:
         required: false
         default: "latest"
 
+      # --- runtime verification -------------------------------------------
+      # A green build used to mean only "the image built". s6-overlay 3.2.3.1
+      # relocated the s6-rc user bundle directory and every downstream container
+      # silently stopped starting its services while CI stayed green. These
+      # inputs gate an assertion that the image's s6 service graph is actually
+      # sound. The expected service set is discovered from the image itself, so
+      # no repo needs to configure anything.
+      verify_s6_enabled:
+        description: "Assert the image's s6 service graph after building it"
+        type: boolean
+        required: false
+        default: true
+      verify_s6_runtime_platform:
+        description: >-
+          Platform whose build additionally gets the runtime (boot-the-container)
+          assertions. Other platforms get the static assertions, which need no
+          emulation and still cover the deprecated-bundle-directory regression.
+          Set to "all" to attempt runtime assertions on every platform.
+        type: string
+        required: false
+        default: "linux/amd64"
+      verify_s6_compare_to_published:
+        description: >-
+          If verification fails, re-run it against the currently published image
+          to distinguish a regression from a pre-existing fault.
+        type: boolean
+        required: false
+        default: true
+      verify_s6_container_env:
+        description: >-
+          Optional newline-separated KEY=VALUE pairs to pass into the container.
+          Opt-in only; the assertions are designed to work with no credentials.
+        type: string
+        required: false
+        default: ""
+      verify_s6_http_probe:
+        description: >-
+          Optional URL that must answer from inside the container. Opt-in extra
+          assertion for images that serve HTTP.
+        type: string
+        required: false
+        default: ""
+      verify_s6_strict_startup:
+        description: >-
+          Fail when a service is not up even if credentials were withheld. Off by
+          default because most of this fleet cannot start without user credentials.
+        type: boolean
+        required: false
+        default: false
+
     secrets:
       dockerhub_token:
         description: "If pushing to dockerhub, this should be a token for dockerhub_profile"
@@ -732,6 +782,58 @@ jobs:
           tags: ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,push=false,oci-mediatypes=true,compression=zstd,compression-level=6,force-compression=true
+
+      # ---------------------------------------------------------------------
+      # Runtime verification of the just-built per-architecture image.
+      #
+      # This sits deliberately between the per-arch build and the manifest merge:
+      # the image exists here and is inspectable, whereas after the merge there is
+      # only a manifest list. A failure here stops the tag from ever being
+      # published, because `merge` needs `build`.
+      #
+      # The builds above export with `outputs: type=image`, which does not place
+      # anything in the local Docker daemon, so nothing is runnable yet. This step
+      # re-exports the same already-built layers with `load: true`; buildx serves
+      # them from cache, so it is an export rather than a rebuild.
+      # ---------------------------------------------------------------------
+      - name: Load image locally for s6 verification
+        id: verify_load
+        if: ${{ matrix.ENABLED && inputs.verify_s6_enabled }}
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: ${{ needs.workflows_env.outputs.docker_build_context }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          platforms: ${{ matrix.TARGET_NAME }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: sdre-verify-local:${{ steps.prepare.outputs.PLATFORM_PAIR }}
+          push: false
+          load: true
+
+      # `$/` is the self-repository reference: it resolves to THIS repository at
+      # the exact commit that is running. That matters here because callers pin
+      # sdre.yml by full SHA, and a plain `./` path inside a reusable workflow
+      # resolves against the *caller's* checkout (a long-standing limitation) so
+      # it would fail with "Can't find action.yml". A hardcoded `@main` would
+      # work but would quietly defeat every caller's SHA pin -- one bad commit
+      # here would reach all ~35 repos at once. `$/` keeps the action locked to
+      # the same commit as this workflow file.
+      # Requires an Actions runner >= 2.336.0 (GitHub-hosted runners are fine).
+      # Not available on GitHub Enterprise Server.
+      - name: Verify s6 services
+        if: ${{ matrix.ENABLED && inputs.verify_s6_enabled }}
+        uses: $/.github/actions/verify-s6-services
+        with:
+          image: sdre-verify-local:${{ steps.prepare.outputs.PLATFORM_PAIR }}
+          # Runtime assertions need to execute the image. Static assertions do not
+          # and always run. The regression this exists for is architecture
+          # independent, so asserting it at runtime on one platform is sufficient.
+          runtime_checks: ${{ inputs.verify_s6_runtime_platform == 'all' || inputs.verify_s6_runtime_platform == matrix.TARGET_NAME }}
+          # The currently published tag is the natural baseline and needs no
+          # configuration. Only consulted when the target has already failed.
+          baseline: ${{ inputs.verify_s6_compare_to_published && format('ghcr.io/{0}:{1}', needs.workflows_env.outputs.ghcr_repo, needs.workflows_env.outputs.build_latest_tag) || '' }}
+          container_env: ${{ inputs.verify_s6_container_env }}
+          http_probe: ${{ inputs.verify_s6_http_probe }}
+          strict_startup: ${{ inputs.verify_s6_strict_startup }}
 
       - name: Export digest
         if: ${{ matrix.ENABLED && needs.workflows_env.outputs.push_enabled == 'true' }}
