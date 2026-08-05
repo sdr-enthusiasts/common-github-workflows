@@ -1,0 +1,3 @@
+#!/command/with-contenv bash
+# Trivial supervised service; exists so the verifier has something to assert.
+exec sleep infinity

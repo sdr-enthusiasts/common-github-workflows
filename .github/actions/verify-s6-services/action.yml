@@ -1,0 +1,128 @@
+---
+name: "Verify s6 services"
+description: >-
+  Assert that a built image will actually run its s6-overlay services, rather
+  than merely that it built. Auto-discovers the expected service set from the
+  image, so it needs no per-repo configuration.
+
+inputs:
+  image:
+    description: "The image to verify (must be present locally or pullable)"
+    required: true
+  baseline:
+    description: >-
+      Optional published image to compare against if the target fails. A failure
+      reproduced identically on the baseline is reported as pre-existing rather
+      than as a regression introduced by this build.
+    required: false
+    default: ""
+  runtime_checks:
+    description: >-
+      Set to false to run static checks only. Static checks execute nothing from
+      the image, so they work on any architecture with no emulation -- and they
+      still cover the deprecated-bundle-directory regression.
+    required: false
+    default: "true"
+  settle_seconds:
+    description: "Seconds to allow for s6 bringup before interrogating it"
+    required: false
+    default: "8"
+  container_env:
+    description: >-
+      Optional newline-separated KEY=VALUE pairs passed into the container.
+      Opt-in escape hatch; never required, because the bundle assertions are
+      designed to work without any credentials.
+    required: false
+    default: ""
+  http_probe:
+    description: >-
+      Optional URL that must answer from inside the container. Opt-in extra
+      assertion for images that serve HTTP.
+    required: false
+    default: ""
+  http_probe_timeout:
+    description: "Seconds to keep retrying the HTTP probe"
+    required: false
+    default: "30"
+  strict_startup:
+    description: >-
+      Treat "service not up" as a failure even when running degraded because
+      credentials were withheld. Off by default, since most of this fleet cannot
+      start its services without user credentials.
+    required: false
+    default: "false"
+  preexisting_is_failure:
+    description: >-
+      When a baseline comparison shows the fault is pre-existing, still fail.
+      Off by default so that pre-existing faults do not block unrelated changes.
+    required: false
+    default: "false"
+
+outputs:
+  result:
+    description: "PASS or FAIL"
+    value: ${{ steps.verify.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify s6 service graph
+      id: verify
+      shell: bash
+      env:
+        VERIFY_IMAGE: ${{ inputs.image }}
+        VERIFY_BASELINE: ${{ inputs.baseline }}
+        VERIFY_RUNTIME_CHECKS: ${{ inputs.runtime_checks }}
+        VERIFY_SETTLE: ${{ inputs.settle_seconds }}
+        VERIFY_CONTAINER_ENV: ${{ inputs.container_env }}
+        VERIFY_HTTP_PROBE: ${{ inputs.http_probe }}
+        VERIFY_HTTP_PROBE_TIMEOUT: ${{ inputs.http_probe_timeout }}
+        VERIFY_STRICT_STARTUP: ${{ inputs.strict_startup }}
+        VERIFY_S6_BASELINE_PREEXISTING_IS_FAILURE: ${{ inputs.preexisting_is_failure == 'true' && '1' || '0' }}
+      run: |
+        set -uo pipefail
+
+        args=(--image "$VERIFY_IMAGE" --settle "$VERIFY_SETTLE")
+
+        [[ -n "$VERIFY_BASELINE" ]] && args+=(--baseline "$VERIFY_BASELINE")
+        [[ "${VERIFY_RUNTIME_CHECKS,,}" != "true" ]] && args+=(--no-runtime-checks)
+        [[ "${VERIFY_STRICT_STARTUP,,}" == "true" ]] && args+=(--strict-startup)
+        if [[ -n "$VERIFY_HTTP_PROBE" ]]; then
+          args+=(--http-probe "$VERIFY_HTTP_PROBE"
+                 --http-probe-timeout "$VERIFY_HTTP_PROBE_TIMEOUT")
+        fi
+
+        # container_env is newline separated KEY=VALUE; ignore blanks and comments.
+        while IFS= read -r line; do
+          line="${line#"${line%%[![:space:]]*}"}"
+          [[ -z "$line" || "$line" == \#* ]] && continue
+          args+=(--env "$line")
+        done <<< "$VERIFY_CONTAINER_ENV"
+
+        "${GITHUB_ACTION_PATH}/verify-s6-services.sh" "${args[@]}" 2>&1 | tee /tmp/verify-s6.out
+        rc="${PIPESTATUS[0]}"
+
+        if [[ "$rc" -eq 0 ]]; then
+          echo "result=PASS" >> "$GITHUB_OUTPUT"
+        else
+          echo "result=FAIL" >> "$GITHUB_OUTPUT"
+        fi
+
+        {
+          echo "### s6 service verification: \`$VERIFY_IMAGE\`"
+          echo
+          if [[ "$rc" -eq 0 ]]; then
+            echo "Result: **PASS**"
+          else
+            echo "Result: **FAIL**"
+          fi
+          echo
+          echo '```text'
+          cat /tmp/verify-s6.out
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        if [[ "$rc" -ne 0 ]]; then
+          echo "::error title=s6 service verification failed::$VERIFY_IMAGE did not pass the s6 service graph assertions. See the job summary."
+        fi
+        exit "$rc"
