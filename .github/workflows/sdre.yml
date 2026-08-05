@@ -106,12 +106,20 @@ on:
         required: false
         default: ""
       build_baseimage_url:
-        description: "The URL of the image to build. The whole SED statement."
+        description: >-
+          The PATTERN/REPLACEMENT half of a sed substitution used to redirect the
+          Dockerfile's FROM line at a candidate base image. Despite the name this
+          is not a URL. It is wrapped as sed 's/<value>/g', so
+          ':base/:base-test-pr' rewrites '...docker-baseimage:base' to
+          '...docker-baseimage:base-test-pr'. Chain substitutions by embedding
+          '/g;s/'. Only read when build_baseimage_test is true.
         type: string
         required: false
         default: ""
       dockerfile_changes:
-        description: "The changes to make to the dockerfile as a sed statement."
+        description: >-
+          The PATTERN/REPLACEMENT half of a sed substitution applied in place to
+          the Dockerfile before building. Wrapped as sed -i 's/<value>/g'.
         type: string
         required: false
         default: ""
@@ -158,7 +166,10 @@ jobs:
       build_test: ${{ steps.workflow_env_build_test.outputs.build_test }}
       build_baseimage_test: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_test }}
       build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
-      build_baseimage_url: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_url }} # THE WHOLE SED STATEMENT!!!!
+      # The PATTERN/REPLACEMENT half of a sed substitution, not a URL. See the
+      # "Dockerfile rewriting" comment block in the build job for the full
+      # explanation of how this is wrapped and why callers look the way they do.
+      build_baseimage_url: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_url }}
       dockerfile_changes: ${{ steps.workflow_env_dockerfile_changes.outputs.dockerfile_changes }}
       digest_id: ${{ steps.export_digest.outputs.digest_id }}
 
@@ -564,22 +575,85 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
-      - name: Change dockerfile
+      # =====================================================================
+      # Dockerfile rewriting
+      #
+      # Both steps below build the SAME artefact: <docker_build_file>.use, which
+      # is what actually gets built. Every path through this section must produce
+      # it, which is why there is an explicit copy for the no-rewrite case.
+      #
+      # HOW build_baseimage_url AND dockerfile_changes ARE INTERPRETED
+      #
+      # Neither input is a URL, despite the name. Each is the MIDDLE of a sed
+      # substitution -- the "PATTERN/REPLACEMENT" part. The workflow wraps it:
+      #
+      #     sed 's/' + <input> + '/g'
+      #
+      # So `build_baseimage_url: :base/:base-test-pr` becomes:
+      #
+      #     sed 's/:base/:base-test-pr/g'
+      #
+      # which rewrites `FROM ...docker-baseimage:base` to
+      # `FROM ...docker-baseimage:base-test-pr`, letting a PR build against a
+      # candidate base image instead of the published one.
+      #
+      # Because the input lands inside the expression, a caller can chain
+      # substitutions by embedding sed syntax. This is why some callers look odd:
+      #
+      #     :wreadsb/:wreadsb-test-pr/g;s/:dump978-full/:dump978-full-test-pr
+      #  -> sed 's/:wreadsb/:wreadsb-test-pr/g;s/:dump978-full/:dump978-full-test-pr/g'
+      #
+      # That is two substitutions, for an image whose Dockerfile has two FROM
+      # lines to redirect. The trailing `/g` is supplied by the wrapper, which is
+      # why the caller's value ends without one.
+      #
+      # Consequences worth knowing before editing a caller:
+      #   * `/` is the delimiter, so patterns cannot contain a literal `/` unless
+      #     escaped; that is why values are written as `:base/:base-test-pr`
+      #     rather than as full image URLs.
+      #   * the pattern is a regex, not a literal, so `.` matches any character.
+      #   * the substitution is global and unanchored, so it applies to every
+      #     matching line, not only FROM lines.
+      #
+      # Values are passed through the environment rather than interpolated
+      # directly into the shell, so that a value containing shell metacharacters
+      # cannot alter the command being run.
+      # =====================================================================
+      - name: Apply dockerfile_changes to the Dockerfile
         id: change_dockerfile
         if: ${{ needs.workflows_env.outputs.dockerfile_changes  &&   matrix.ENABLED }}
+        env:
+          DOCKERFILE_CHANGES: ${{ needs.workflows_env.outputs.dockerfile_changes }}
+          BUILD_FILE: ${{ needs.workflows_env.outputs.docker_build_file }}
         run: |
-          if [[ -n "${{ needs.workflows_env.outputs.dockerfile_changes }}" ]]; then
-            sed -i "s/${{ needs.workflows_env.outputs.dockerfile_changes }}/g" ${{ needs.workflows_env.outputs.docker_build_file }}
+          set -euo pipefail
+          if [[ -n "$DOCKERFILE_CHANGES" ]]; then
+            echo "applying: sed 's/${DOCKERFILE_CHANGES}/g'"
+            sed -i "s/${DOCKERFILE_CHANGES}/g" "$BUILD_FILE"
           fi
 
-      # Patch dockerfile to use correct base image
+      # Redirect the FROM line(s) at a candidate base image instead of the
+      # published one. Produces the .use file consumed by the build steps.
       - name: Patch Dockerfile to correct base image
         if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'true'  &&   matrix.ENABLED }}
-        run: sed 's/${{ needs.workflows_env.outputs.build_baseimage_url }}/g' < ${{ needs.workflows_env.outputs.docker_build_file }} > ${{ needs.workflows_env.outputs.docker_build_file }}.use
+        env:
+          BASEIMAGE_SED: ${{ needs.workflows_env.outputs.build_baseimage_url }}
+          BUILD_FILE: ${{ needs.workflows_env.outputs.docker_build_file }}
+        run: |
+          set -euo pipefail
+          echo "applying: sed 's/${BASEIMAGE_SED}/g'"
+          sed "s/${BASEIMAGE_SED}/g" <"$BUILD_FILE" >"${BUILD_FILE}.use"
+          echo "--- FROM lines after rewrite ---"
+          grep -n '^[[:space:]]*FROM' "${BUILD_FILE}.use" || true
 
+      # No rewrite requested, but the build steps always read the .use file.
       - name: Copy dockerfile to correct name
         if: ${{ needs.workflows_env.outputs.build_baseimage_test == 'false'  &&   matrix.ENABLED }}
-        run: cp ${{ needs.workflows_env.outputs.docker_build_file }} ${{ needs.workflows_env.outputs.docker_build_file }}.use
+        env:
+          BUILD_FILE: ${{ needs.workflows_env.outputs.docker_build_file }}
+        run: |
+          set -euo pipefail
+          cp "$BUILD_FILE" "${BUILD_FILE}.use"
 
       # Determine image names/tags
       - name: Determine image names/tags
