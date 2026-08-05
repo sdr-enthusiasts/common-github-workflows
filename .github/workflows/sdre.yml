@@ -53,47 +53,16 @@ on:
         type: boolean
         required: false
         default: true
-      build_enabled:
-        description: "Set to true to build images"
-        type: boolean
-        required: false
-        default: true
-
       build_latest:
         description: "Set to true to include a latest tag"
         type: boolean
         required: false
         default: true
-      build_test:
-        description: "Set to true to include a test tag"
-        type: boolean
-        required: false
-        default: false
       build_baseimage_test:
         description: "Set to true to include a baseimage-test tag"
         type: boolean
         required: false
         default: false
-      build_with_tmpfs:
-        description: "Set to true to build with tmpfs"
-        type: boolean
-        required: false
-        default: false
-      cache_enabled:
-        description: "Use actions/cache to populate cached data"
-        type: boolean
-        required: false
-        default: false
-      cache_path:
-        description: "The path to restore the cache to"
-        type: string
-        required: false
-        default: ""
-      cache_key:
-        description: "The cache key to restore"
-        type: string
-        required: false
-        default: ""
       build_baseimage_url:
         description: >-
           The PATTERN/REPLACEMENT half of a sed substitution used to redirect the
@@ -185,19 +154,9 @@ jobs:
       output_ghcr_io_enabled: ${{ steps.workflow_env_push_destinations.outputs.ghcr_io_enabled }}
       ghcr_repo: ${{ steps.workflow_env_ghcr_repo.outputs.ghcr_repo}}
       ghcr_repo_owner: ${{ steps.workflow_env_ghcr_repo_owner.outputs.ghcr_repo_owner}}
-      # platform_linux_arm32v6_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}
-      platform_linux_arm32v7_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v7 }}
-      platform_linux_arm64v8_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_arm64 }}
-      platform_linux_amd64_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_amd64 }}
-      # platform_linux_i386_enabled: ${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}
-      platforms_csv: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_csv }}
-      platforms_matrix_json: ${{ steps.workflow_env_build_multi_arch.outputs.multi_arch_matrix_json }}
-      build_multi_arch: ${{ steps.workflow_env_build_multi_arch.outputs.build_multi_arch_enabled }}
       build_latest: ${{ steps.workflow_env_build_latest.outputs.build_latest }}
       build_latest_tag: ${{ steps.workflow_env_build_latest.outputs.docker_latest_tag }}
-      build_test: ${{ steps.workflow_env_build_test.outputs.build_test }}
       build_baseimage_test: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_test }}
-      build_with_tmpfs: ${{ steps.workflow_env_build_with_tmpfs.outputs.build_with_tmpfs }}
       # The PATTERN/REPLACEMENT half of a sed substitution, not a URL. See the
       # "Dockerfile rewriting" comment block in the build job for the full
       # explanation of how this is wrapped and why callers look the way they do.
@@ -218,27 +177,6 @@ jobs:
           # create a unique id for the digest
           id="$(uuidgen)"
           echo "digest_id=$id" >> $GITHUB_OUTPUT
-
-      # check cache
-      - name: "check 'cache_enabled'"
-        if: ${{ inputs.cache_enabled }}
-        id: workflow_env_check_cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ${{ inputs.cache_path }}
-          key: ${{ inputs.cache_key }}
-      - name: "ensure cache hit"
-        if: ${{ inputs.cache_enabled }}
-        env:
-          CACHE_HIT: ${{ steps.workflow_env_check_cache.outputs.cache-hit }}
-          CACHE_PATH: ${{ inputs.cache_path }}
-        run: |
-          if [[ "${CACHE_HIT,,}" != "true" ]]; then
-            echo "::error title=${{ github.job }}: Cache hit returned false"
-            exit 1
-          else
-            ls -laR "$CACHE_PATH"
-          fi
 
       # Check imported environment variable PUSH_ENABLED
       - name: "check 'push_enabled'"
@@ -341,39 +279,6 @@ jobs:
           fi
           exit $FAIL_STEP
 
-      # Check imported environment variables build_enabled
-      - name: "check 'build_enabled'"
-        id: workflow_env_build_multi_arch
-        env:
-          BUILD: ${{ inputs.build_enabled }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ "${BUILD,,}" == "true" ]]; then
-            echo "build_multi_arch_enabled=true" >> $GITHUB_OUTPUT
-            MULTI_ARCH_ARRAY=()
-            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}" == "true" ]]; then
-              MULTI_ARCH_ARRAY+=("linux/arm/v6")
-            fi
-            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v7 }}" == "true" ]]; then
-              MULTI_ARCH_ARRAY+=("linux/arm/v7")
-            fi
-            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm64 }}" == "true" ]]; then
-              MULTI_ARCH_ARRAY+=("linux/arm64")
-            fi
-            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_amd64 }}" == "true" ]]; then
-              MULTI_ARCH_ARRAY+=("linux/amd64")
-            fi
-            if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_i386 }}" == "true" ]]; then
-              MULTI_ARCH_ARRAY+=("linux/i386")
-            fi
-            printf -v MULTI_ARCH_CSV '%s,' "${MULTI_ARCH_ARRAY[@]}"
-            echo "multi_arch_csv=${MULTI_ARCH_CSV::-1}" >> $GITHUB_OUTPUT
-            printf -v MULTI_ARCH_JSON '"%s",' "${MULTI_ARCH_ARRAY[@]}"
-            echo "multi_arch_matrix_json={\"platform\":[${MULTI_ARCH_JSON::-1}]}" >> $GITHUB_OUTPUT
-          fi
-          exit $FAIL_STEP
-
       # Check imported environment variables build_latest
       - name: "check 'build_latest'"
         id: workflow_env_build_latest
@@ -394,19 +299,6 @@ jobs:
               echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> $GITHUB_OUTPUT
           fi
 
-          exit $FAIL_STEP
-
-      # Check imported environment variables build_latest
-      - name: "check 'build_test'"
-        id: workflow_env_build_test
-        env:
-          BUILD_TEST: ${{ inputs.build_test }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ "${BUILD_TEST,,}" == "true" ]]; then
-            echo "build_test=true" >> $GITHUB_OUTPUT
-          fi
           exit $FAIL_STEP
 
       # Check imported environment variables build_baseimage_test
@@ -455,19 +347,6 @@ jobs:
           fi
           exit $FAIL_STEP
 
-      # check for import environment variables build_with_tmpfs
-      - name: "check 'build_with_tmpfs'"
-        id: workflow_env_build_with_tmpfs
-        env:
-          BUILD_WITH_TMPFS: ${{ inputs.build_with_tmpfs }}
-        run: |
-          set -x
-          FAIL_STEP=0
-          if [[ "${BUILD_WITH_TMPFS,,}" == "true" ]]; then
-            echo "build_with_tmpfs=true" >> $GITHUB_OUTPUT
-          fi
-          exit $FAIL_STEP
-
       - name: "check dockerfile_changes"
         id: workflow_env_dockerfile_changes
         env:
@@ -481,7 +360,6 @@ jobs:
           exit $FAIL_STEP
   build:
     name: Build (manifest)
-    if: ${{ needs.workflows_env.outputs.build_multi_arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -516,15 +394,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Populate cache
-      - name: "check 'cache_enabled'"
-        if: ${{ inputs.cache_enabled && matrix.ENABLED }}
-        id: populate_cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ${{ inputs.cache_path }}
-          key: ${{ inputs.cache_key }}
-
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true'  &&   matrix.ENABLED }}
@@ -533,14 +402,6 @@ jobs:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
           password: ${{ secrets.ghcr_token }}
-
-      - name: Run Docker on tmpfs
-        if: ${{ needs.workflows_env.outputs.build_with_tmpfs == 'true'  &&   matrix.ENABLED }}
-        uses: JonasAlfredsson/docker-on-tmpfs@55e939ef196646234a12c245e3414879e3580f01 # v2.0.0
-        with:
-          tmpfs_size: 10
-          swap_size: 10
-          swap_location: "/mnt/swapfile"
 
       # Set up buildx
       - name: Set up Docker Buildx
@@ -647,9 +508,6 @@ jobs:
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}")
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-build-$GITHUB_RUN_NUMBER")
-          fi
-          if [[ "${{ needs.workflows_env.outputs.build_test }}" == "true" ]]; then
-            IMAGE_TAGS+=("test")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_baseimage_test }}" == "true" ]]; then
             if [[ "${{ needs.workflows_env.outputs.build_latest_tag }}" == "latest" ]]; then
