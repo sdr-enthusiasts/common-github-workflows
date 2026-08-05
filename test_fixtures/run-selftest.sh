@@ -96,6 +96,43 @@ expect legacy-empty 1 'FAIL.*\[R3\].*compiled user bundle does NOT match'
 expect unregistered 1 'FAIL.*\[S2\].*defined but NONE are registered'
 
 echo
+echo "== degraded-mode startup comparison =="
+# Roughly half this fleet cannot start without credentials, so R4 is undecidable
+# for it and a broken service used to ship green. These three cases pin down the
+# behaviour that replaced that: fail only on a demonstrable change against the
+# published image.
+docker build -q -t s6selftest:needs-credential test_fixtures/needs-credential >/dev/null 2>&1
+docker build -q -t s6selftest:new-broken-service test_fixtures/new-broken-service >/dev/null 2>&1
+
+cmp_case() { # cmp_case <target> <baseline> <want-rc> <regex> <label>
+	local t="$1" b="$2" want="$3" re="$4" label="$5" out rc
+	out="$("$VERIFY" --image "$t" --baseline "$b" --settle "$SETTLE" 2>&1)"
+	rc=$?
+	if [[ "$rc" -ne "$want" ]]; then
+		bad "$label: expected exit $want, got $rc"
+		indent_out "$out"
+	elif ! grep -Eq "$re" <<<"$out"; then
+		bad "$label: exit correct but output did not match /$re/"
+		indent_out "$out"
+	else
+		pass "$label"
+	fi
+}
+
+# An image compared against itself must never fail. This is the guard against the
+# whole fleet failing on rollout, and it caught a real bug: matching service names
+# with grep -w treats hyphens as non-word characters, so `ssl` matched `10-ssl`
+# and an image was reported as a regression against itself.
+cmp_case s6selftest:needs-credential s6selftest:needs-credential 0 \
+	'R5 no startup change' "unchanged image vs itself passes"
+# A newly added service that never starts must be caught.
+cmp_case s6selftest:new-broken-service s6selftest:needs-credential 1 \
+	'FAIL.*\[R6\].*broken-new' "newly added broken service is caught"
+# ...while the credential-blocked service present in both is absorbed as normal.
+cmp_case s6selftest:new-broken-service s6selftest:needs-credential 1 \
+	'not a change: needs-key' "pre-existing credential failure not misreported"
+
+echo
 if [[ $rc_overall -eq 0 ]]; then
 	printf '\033[0;32mSELF-TEST PASSED\033[0m\n'
 else
