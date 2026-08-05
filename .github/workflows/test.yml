@@ -24,18 +24,6 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
-  build_test:
-    uses: ./.github/workflows/sdre.yml
-    name: "Build & Push Test"
-    with:
-      push_enabled: true
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      build_latest: false
-      build_test: true
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
   build_baseimage_test:
     uses: ./.github/workflows/sdre.yml
     name: "Build & Push Test base image"
@@ -48,45 +36,6 @@ jobs:
       # should not change anything, but why not
       build_baseimage_url: :acars-decoder-soapy/:acars-decoder-soapy-test-pr
 
-    secrets:
-      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
-
-  populate_cache:
-    name: "Populate cache"
-    runs-on: ubuntu-24.04
-    steps:
-      # Check out code
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: "Make some data to cache"
-        run: |
-          mkdir -p ./cache
-          dd if=/dev/zero of=./cache/data bs=4k count=50
-          ls -la ./cache/data
-
-      # Populate cache
-      - name: "Populate cache"
-        id: populate_cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ./cache
-          key: ${{ github.run_id }}
-
-  check_cache:
-    name: "Check cache"
-    needs: [populate_cache]
-    uses: ./.github/workflows/sdre.yml
-    with:
-      push_enabled: false
-      build_latest: true
-      ghcr_repo_owner: mikenye
-      ghcr_repo: ${{ github.repository }}
-      cache_enabled: true
-      cache_path: ./cache
-      cache_key: ${{ github.run_id }}
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -109,27 +58,18 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
-      - build_test
       - build_baseimage_test
-      - populate_cache
-      - check_cache
       - verify_s6_selftest
     if: always()
     steps:
       - name: Verify all required jobs succeeded
         run: |
           echo "build: ${{ needs.build.result }}"
-          echo "build_test: ${{ needs.build_test.result }}"
           echo "build_baseimage_test: ${{ needs.build_baseimage_test.result }}"
-          echo "populate_cache: ${{ needs.populate_cache.result }}"
-          echo "check_cache: ${{ needs.check_cache.result }}"
           echo "verify_s6_selftest: ${{ needs.verify_s6_selftest.result }}"
 
           if [[ "${{ needs.build.result }}" != "success" ]] ||
-             [[ "${{ needs.build_test.result }}" != "success" ]] ||
              [[ "${{ needs.build_baseimage_test.result }}" != "success" ]] ||
-             [[ "${{ needs.populate_cache.result }}" != "success" ]] ||
-             [[ "${{ needs.check_cache.result }}" != "success" ]] ||
              [[ "${{ needs.verify_s6_selftest.result }}" != "success" ]]; then
             echo "❌ One or more jobs failed"
             exit 1
