@@ -90,6 +90,20 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
+  # Proves the s6 verifier still detects each way a container can be broken.
+  # The positive cases matter far less than the negative ones: every image that
+  # carried the s6-overlay 3.2.3.1 regression built and ran successfully, so a
+  # suite that only checked "it builds" could never have caught it.
+  verify_s6_selftest:
+    name: "Verify s6 assertions detect broken images"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run the verifier self-test
+        run: ./test_fixtures/run-selftest.sh
+
   all_tests_passed:
     name: All tests passed
     runs-on: ubuntu-latest
@@ -99,6 +113,7 @@ jobs:
       - build_baseimage_test
       - populate_cache
       - check_cache
+      - verify_s6_selftest
     if: always()
     steps:
       - name: Verify all required jobs succeeded
@@ -108,12 +123,14 @@ jobs:
           echo "build_baseimage_test: ${{ needs.build_baseimage_test.result }}"
           echo "populate_cache: ${{ needs.populate_cache.result }}"
           echo "check_cache: ${{ needs.check_cache.result }}"
+          echo "verify_s6_selftest: ${{ needs.verify_s6_selftest.result }}"
 
           if [[ "${{ needs.build.result }}" != "success" ]] ||
              [[ "${{ needs.build_test.result }}" != "success" ]] ||
              [[ "${{ needs.build_baseimage_test.result }}" != "success" ]] ||
              [[ "${{ needs.populate_cache.result }}" != "success" ]] ||
-             [[ "${{ needs.check_cache.result }}" != "success" ]]; then
+             [[ "${{ needs.check_cache.result }}" != "success" ]] ||
+             [[ "${{ needs.verify_s6_selftest.result }}" != "success" ]]; then
             echo "❌ One or more jobs failed"
             exit 1
           fi

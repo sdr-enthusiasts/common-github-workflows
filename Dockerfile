@@ -1,8 +1,15 @@
-# Generic image to test builds
+# Generic image used to self-test sdre.yml.
+#
+# This is deliberately built on the org base image and ships real s6 services, so
+# that the runtime verification step in sdre.yml is exercised end to end against
+# something shaped like an actual downstream image. Before it had any services,
+# the harness could not have detected the s6-overlay 3.2.3.1 bundle regression at
+# all -- which is precisely how that regression reached users.
+FROM ghcr.io/sdr-enthusiasts/docker-baseimage:base
 
-FROM debian:trixie-20251208-slim@sha256:e711a7b30ec1261130d0a121050b4ed81d7fb28aeabcf4ea0c7876d4e9f5aca2
-
-WORKDIR /opt/sdre
-COPY ./test_image_rootfs ./
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Registers test-longrun and test-oneshot under user-bundles.d.
+COPY ./test_image_rootfs/etc /etc
+
 RUN echo "v1.0.0" > /IMAGE_VERSION
