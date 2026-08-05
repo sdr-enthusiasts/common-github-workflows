@@ -248,6 +248,15 @@ snapshot_image() {
 	# Missing paths are expected for some images, so failures here are not fatal.
 	docker cp "$cid:/etc/s6-overlay/user-bundles.d/user/contents.d" "$SNAP/contents.d" >/dev/null 2>&1
 	docker cp "$cid:/etc/s6-overlay/s6-rc.d" "$SNAP/s6-rc.d" >/dev/null 2>&1
+	# s6-overlay v3 installs itself here. Its absence means there is no s6-rc
+	# database to interrogate, however the image is otherwise structured: older
+	# s6-overlay v2 images and images with a hand-written /init both ship an
+	# /init, so testing for /init would misclassify them. Costs ~4KB to copy.
+	if docker cp "$cid:/package/admin/s6-overlay" "$SNAP/s6-overlay-pkg" >/dev/null 2>&1; then
+		S6V3_PRESENT=1
+	else
+		S6V3_PRESENT=0
+	fi
 	docker rm -f "$cid" >/dev/null 2>&1
 	return 0
 }
@@ -270,7 +279,16 @@ sample() {
 	STATE="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || echo unknown)"
 }
 
-in_container() { docker exec "$CONTAINER" "$@" 2>/dev/null; }
+# Yields nothing at all when the command cannot be run, rather than letting a
+# runtime error such as `exec: "s6-rc-db": executable file not found` become the
+# captured value and get compared against an expected service set. Note docker
+# prints some of those errors to stdout, so redirecting stderr is not sufficient.
+in_container() {
+	local out
+	if out="$(docker exec "$CONTAINER" "$@" 2>/dev/null)"; then
+		printf '%s' "$out"
+	fi
+}
 
 # ===========================================================================
 # MAIN
@@ -325,13 +343,23 @@ n_defined=$([[ -n "$DEFINED" ]] && echo "$DEFINED" | wc -l || echo 0)
 # base image like :base or :wreadsb that legitimately ships no user services.
 # The discriminator is whether service definitions exist without registrations.
 IMAGE_CLASS="service"
-if [[ $n_expected -eq 0 && $n_defined -eq 0 ]]; then
+if [[ "${S6V3_PRESENT:-0}" -eq 0 && $n_expected -eq 0 && $n_defined -eq 0 ]]; then
+	# No s6-overlay v3, so there is no s6-rc database and nothing to assert.
+	# Distinguished from a base image because a base image DOES ship s6-overlay
+	# and so is still capable of poisoning its children with a legacy bundle dir.
+	IMAGE_CLASS="not-s6"
+elif [[ $n_expected -eq 0 && $n_defined -eq 0 ]]; then
 	IMAGE_CLASS="base"
 elif [[ $n_expected -eq 0 && $n_defined -gt 0 ]]; then
 	IMAGE_CLASS="unregistered"
 fi
 
 case "$IMAGE_CLASS" in
+not-s6)
+	pass "S2 image does not ship s6-overlay v3 -- s6 service assertions not applicable"
+	note "no /package/admin/s6-overlay, so there is no s6-rc database to check"
+	note "if this image is expected to run s6 services, that absence is itself the bug"
+	;;
 base)
 	pass "S2 no user services defined or registered -- base image, service assertions not applicable"
 	note "s6-rc.d and user-bundles.d/user/contents.d are both empty, which is"
@@ -374,6 +402,9 @@ if [[ $RUNTIME_CHECKS -eq 0 ]]; then
 	head1 "Runtime"
 	notassessed R "runtime checks disabled (--no-runtime-checks)"
 	note "static checks above still fully cover the deprecated-directory regression"
+elif [[ "$IMAGE_CLASS" == "not-s6" ]]; then
+	head1 "Runtime"
+	notassessed R "skipped: no s6-overlay v3 in this image, so there is no service graph"
 elif [[ "$IMAGE_CLASS" == "unregistered" ]]; then
 	head1 "Runtime"
 	notassessed R "skipped: nothing is registered, so there is nothing to bring up"
