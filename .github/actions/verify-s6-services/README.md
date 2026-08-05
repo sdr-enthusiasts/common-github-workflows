@@ -137,6 +137,17 @@ Stated plainly, so the green tick is not over-trusted.
 
 - **Whether a service does anything useful.** R4 asserts s6 considers a service
   up. A service that starts, logs an error and idles forever passes.
+- **A genuinely broken service, when the image cannot start without
+  credentials.** This is the biggest blind spot and it is structural. A oneshot
+  that fails because a key is missing and a oneshot that fails because it is
+  broken look identical: both exit nonzero, and because the base sets
+  `S6_BEHAVIOUR_IF_STAGE2_FAILS=2` both halt the container. Verification retries
+  in degraded mode and reports R4 as _not assessed_, so **the build passes**.
+  Verified: a fixture whose oneshot does nothing but `exit 1` passes. This is the
+  direct price of making credential-less feeders verifiable at all — the
+  alternative was verifying nothing. Bundle integrity is still asserted; service
+  startup is not. `strict_startup: true` fails instead, and is appropriate only
+  for images that start cleanly with no configuration.
 - **Anything requiring credentials or hardware.** Feeders and SDR images run in
   degraded mode, where R4 is explicitly _not assessed_. The bundle is verified;
   the feeding is not.
