@@ -45,6 +45,8 @@ Runtime checks boot the container and interrogate the compiled database.
 | R2  | no `s6-rc-compile: fatal` in the logs                               |
 | R3  | the compiled user bundle equals the expected set                    |
 | R4  | every service in the bundle's transitive closure is up              |
+| R5  | no service that starts in the published image fails to start here   |
+| R6  | no newly added service fails to start                               |
 | P1  | optional, opt-in: an HTTP URL answers inside the container          |
 
 R3 is the decisive one. It is what comes back wrong when the shim silently drops
@@ -74,6 +76,26 @@ reported as _not assessed_ rather than passed or failed.
 
 This turns an "untestable feeder container" into a "bundle-verifiable container"
 with zero configuration.
+
+R4 alone is not enough, though, and roughly half this fleet lands in degraded
+mode. A oneshot that exits nonzero because a key is missing is indistinguishable
+from one that exits nonzero because it is broken, so leaving it at "not assessed"
+meant a genuinely broken service shipped green.
+
+R5 and R6 close that. The trick is not to guess _why_ a service is down, but to
+ask whether **this build changed it**. The published image defines what "down"
+normally looks like for this image:
+
+- down here, up in the published image → **R5 fails.** Provably this build's
+  fault, since the published image starts it in the same credential-less
+  environment.
+- down here, also down in the published image → pre-existing, does not fail.
+- down here, absent from the published image entirely → **R6 fails.** Newly
+  added and never starts: either broken, or it needs configuration that should
+  be supplied via `container_env`.
+
+This costs one extra container run (~15s) and only on images that actually land
+in degraded mode.
 
 A container can also sit in state `running` while s6-rc bringup was aborted
 entirely, so nothing is up at all — `docker-aprs-tracker` does this when no
@@ -137,20 +159,19 @@ Stated plainly, so the green tick is not over-trusted.
 
 - **Whether a service does anything useful.** R4 asserts s6 considers a service
   up. A service that starts, logs an error and idles forever passes.
-- **A genuinely broken service, when the image cannot start without
-  credentials.** This is the biggest blind spot and it is structural. A oneshot
-  that fails because a key is missing and a oneshot that fails because it is
-  broken look identical: both exit nonzero, and because the base sets
-  `S6_BEHAVIOUR_IF_STAGE2_FAILS=2` both halt the container. Verification retries
-  in degraded mode and reports R4 as _not assessed_, so **the build passes**.
-  Verified: a fixture whose oneshot does nothing but `exit 1` passes. This is the
-  direct price of making credential-less feeders verifiable at all — the
-  alternative was verifying nothing. Bundle integrity is still asserted; service
-  startup is not. `strict_startup: true` fails instead, and is appropriate only
-  for images that start cleanly with no configuration.
-- **Anything requiring credentials or hardware.** Feeders and SDR images run in
-  degraded mode, where R4 is explicitly _not assessed_. The bundle is verified;
-  the feeding is not.
+- **A service that has never worked.** R5/R6 fail only on a _change_ against the
+  published image. A service that is broken in both is reported as pre-existing
+  and does not fail the build, by design — otherwise adopting this would have
+  failed roughly half the fleet at once. Use `strict_startup: true` to fail on
+  any service being down.
+- **A newly added service that legitimately needs configuration.** R6 cannot
+  distinguish this from a newly added broken service, so it fails and you supply
+  what it needs via `container_env`. This is deliberately the noisy direction:
+  the cost is one failed build when adding a feeder service, versus silently
+  shipping a service that never runs.
+- **Anything requiring credentials or hardware, in the functional sense.** The
+  service is asserted to reach the `up` state, not to authenticate, decode or
+  feed anything.
 - **Correct application behaviour or output.** No decoding, no data flow, no
   network egress, no web UI correctness. The `http_probe` is a liveness ping, not
   a functional test.

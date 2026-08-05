@@ -1,0 +1,2 @@
+#!/command/with-contenv bash
+exec /usr/bin/this-binary-does-not-exist

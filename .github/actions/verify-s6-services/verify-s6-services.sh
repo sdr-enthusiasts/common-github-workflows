@@ -170,6 +170,14 @@ else
 fi
 
 FAILED=0
+# Observations exported for baseline comparison. Populated in degraded mode, where
+# R4 cannot be asserted directly: we cannot tell a service that failed for want of
+# a credential from one that is simply broken. What we CAN do is compare against
+# the published image, which tells us what "not up" normally looks like for this
+# image, and fail only on a change.
+DEGRADED_NOT_UP=""
+OBSERVED_UP=""
+OBSERVED_REGISTERED=""
 declare -a FAILED_CHECKS=()
 declare -a FAILED_SIGS=()
 declare -a NOTASSESSED_CHECKS=()
@@ -476,6 +484,8 @@ else
 				notassessed R4 "no user services to start (base image)"
 			else
 				UP="$(in_container s6-rc -a list | sort)"
+				OBSERVED_UP="$(tr '\n' ' ' <<<"$UP")"
+				OBSERVED_REGISTERED="$(tr '\n' ' ' <<<"$EXPECTED")"
 				TRANSITIVE="$(in_container s6-rc-db -c /run/s6/db all-dependencies user | sort)"
 				if [[ -z "$TRANSITIVE" ]]; then
 					TRANSITIVE="$EXPECTED"
@@ -500,13 +510,20 @@ else
 					notassessed R4 "s6-rc brought up nothing: bringup was aborted before any service ran"
 					note "this is a configuration or hardware prerequisite of the image,"
 					note "not a bundle fault; R3 above already verified the compiled bundle"
+					# Still comparable: if the published image brings these up in the
+					# same environment and this build brings up nothing, that is a
+					# regression, not a hardware prerequisite.
+					DEGRADED_NOT_UP="$(tr ' ' '\n' <<<"$TRANSITIVE" | sed '/^$/d' | sort -u | paste -sd' ' -)"
 					note "--- last 12 log lines ---"
 					tail -12 <<<"$LOGS" | sed 's/^/      /'
 				elif [[ -z "$not_up" ]]; then
 					pass "R4 all services in the user bundle's transitive closure are up"
 				elif [[ $DEGRADED -eq 1 && $STRICT_STARTUP -eq 0 ]]; then
-					notassessed R4 "service startup not assessed (degraded mode: credentials withheld)"
+					notassessed R4 "service startup not assessed directly (degraded mode)"
 					note "not up: $not_up"
+					# Recorded so the baseline comparison below can still decide
+					# whether this build changed anything.
+					DEGRADED_NOT_UP="$(tr ' ' '\n' <<<"$not_up" | sed '/^$/d' | sort -u | paste -sd' ' -)"
 				else
 					FAIL_DETAIL="$not_up"
 					fail R4 "registered but not up: $not_up"
@@ -549,7 +566,90 @@ emit_machine_summary() {
 	printf '\n__RESULT__=%s\n' "$1"
 	printf '__FAILED_CHECKS__=%s\n' "${FAILED_CHECKS[*]+${FAILED_CHECKS[*]}}"
 	printf '__FAILED_SIGS__=%s\n' "${FAILED_SIGS[*]+${FAILED_SIGS[*]}}"
+	printf '__DEGRADED_NOT_UP__=%s\n' "$DEGRADED_NOT_UP"
+	printf '__OBSERVED_UP__=%s\n' "$OBSERVED_UP"
+	printf '__OBSERVED_REGISTERED__=%s\n' "$OBSERVED_REGISTERED"
 }
+
+# ---------------------------------------------------------------------------
+# Degraded-mode startup comparison.
+#
+# In degraded mode R4 cannot be decided on its own: a oneshot that exits nonzero
+# because a key is missing is indistinguishable from one that exits nonzero
+# because it is broken. Both halt the container, and roughly half this fleet is
+# in that state, so leaving it at "not assessed" means a genuinely broken service
+# ships green.
+#
+# The way out is not to guess why a service is down, but to ask whether THIS
+# BUILD changed it. The published image defines what "down" normally looks like
+# for this image. Anything that was up there and is down here is a regression we
+# can prove. A service that does not exist there at all and does not start here
+# is newly broken or newly needs configuration; either way it is a change worth
+# stopping for, and it is reported separately so the cause is obvious.
+# ---------------------------------------------------------------------------
+if [[ $FAILED -eq 0 && $ASSESS_ONLY -eq 0 && -n "${DEGRADED_NOT_UP// /}" && -n "$BASELINE" ]]; then
+	head1 "Degraded-mode startup comparison"
+	note "R4 could not be decided directly, so comparing against the published"
+	note "image to establish whether this build changed anything: $BASELINE"
+
+	if ! docker image inspect "$BASELINE" >/dev/null 2>&1 &&
+		! docker pull -q "$BASELINE" >/dev/null 2>&1; then
+		warn "baseline not available, so startup changes cannot be assessed"
+		note "tried: $BASELINE (normal for a first build)"
+	else
+		declare -a cmp_args=(--image "$BASELINE" --settle "$SETTLE_SECONDS" --_assess-only)
+		i=0
+		while [[ $i -lt ${#RUN_ENV[@]} ]]; do
+			[[ "${RUN_ENV[i]}" == "-e" ]] && cmp_args+=(--env "${RUN_ENV[i + 1]}")
+			i=$((i + 2))
+		done
+		cmp_out="$("$0" "${cmp_args[@]}" 2>&1)"
+		base_up="$(sed -n 's/^__OBSERVED_UP__=//p' <<<"$cmp_out" | tail -1)"
+		base_notup="$(sed -n 's/^__DEGRADED_NOT_UP__=//p' <<<"$cmp_out" | tail -1)"
+		base_reg="$(sed -n 's/^__OBSERVED_REGISTERED__=//p' <<<"$cmp_out" | tail -1)"
+
+		note "published: up=[${base_up% }] not-up=[${base_notup% }]"
+		note "this build: not-up=[${DEGRADED_NOT_UP}]"
+
+		# Exact whole-line membership. Emphatically NOT grep -w: hyphens are not
+		# word characters, so `grep -w ssl` matches inside `10-ssl` and `grep -w
+		# rbfeeder` matches inside `01-show-rbfeeder-changelog`. These service
+		# naming conventions make near-miss matches the norm, and the effect was
+		# to report an image as a regression against itself.
+		in_set() { grep -qxF -- "$1" <<<"$(tr ' ' '\n' <<<"$2" | sed '/^$/d')"; }
+
+		regressed="" newly_down="" preexisting=""
+		for svc in $DEGRADED_NOT_UP; do
+			if in_set "$svc" "$base_up"; then
+				regressed+="$svc "
+			elif in_set "$svc" "$base_notup" || in_set "$svc" "$base_reg"; then
+				preexisting+="$svc "
+			else
+				newly_down+="$svc "
+			fi
+		done
+
+		[[ -n "${preexisting// /}" ]] &&
+			note "down in the published image too, so not a change: $preexisting"
+
+		if [[ -n "${regressed// /}" ]]; then
+			FAIL_DETAIL="$regressed"
+			fail R5 "services that are up in the published image are NOT up here: $regressed"
+			note "this build stopped them starting; it is not a missing credential,"
+			note "because the published image starts them in this same environment"
+		fi
+		if [[ -n "${newly_down// /}" ]]; then
+			FAIL_DETAIL="$newly_down"
+			fail R6 "new services that never start: $newly_down"
+			note "these do not exist in the published image and do not come up here"
+			note "either they are broken, or they need configuration this check does"
+			note "not supply. If the latter, pass what they need via container_env."
+		fi
+		if [[ -z "${regressed// /}${newly_down// /}" ]]; then
+			pass "R5 no startup change versus the published image"
+		fi
+	fi
+fi
 
 head1 "Result"
 
