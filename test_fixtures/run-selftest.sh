@@ -79,6 +79,11 @@ expect_positive() {
 }
 expect_positive harness:local "harness image with two healthy services"
 expect base-like 0 'base image, service assertions not applicable'
+# A base image ships s6-overlay and so can still poison its children with a
+# legacy bundle directory; an image with no s6-overlay cannot. They must not be
+# conflated, or the not-found error from s6-rc-db gets compared against the
+# expected service set and produces a bogus R3 failure.
+expect not-s6 0 'does not ship s6-overlay v3'
 
 echo
 echo "== negative cases (must be rejected, for the right reason) =="

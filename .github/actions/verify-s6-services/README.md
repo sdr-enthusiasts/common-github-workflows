@@ -153,8 +153,12 @@ Stated plainly, so the green tick is not over-trusted.
   `settle_seconds`. A service that dies at minute five is not seen.
 - **Runtime-generated service definitions.** Services written by a oneshot at
   boot are not in the static set, so S2 and S3 cannot see them. R3 and R4 will.
-- **Non-s6 images.** An image with no s6-overlay is reported as a base image and
-  vacuously passes.
+- **Non-s6 images.** An image with no s6-overlay v3 is reported as
+  not-applicable and vacuously passes. Detection is on
+  `/package/admin/s6-overlay`, not on `/init`, because s6-overlay v2 images and
+  images with a hand-written `/init` both ship the latter. If such an image was
+  _supposed_ to run s6 services, that absence is the bug and this will not tell
+  you.
 - **Regressions already present in the published image**, when `baseline` is
   enabled. Those are reported as pre-existing and, by default, do not fail the
   build. They are still real problems.
