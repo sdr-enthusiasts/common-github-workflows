@@ -323,6 +323,33 @@ in_container() {
 	fi
 }
 
+# s6 tools live in /command, but not every image puts /command on PATH -- the org
+# base images do, a bare s6-overlay install without the symlinks package does not.
+# Try the absolute path first so the checks do not depend on the image's PATH.
+# Returns nonzero if the tool cannot be run at all, which is reported distinctly
+# rather than being allowed to look like an empty result and therefore a mismatch.
+S6_TOOLS_USABLE=1
+s6_tool() {
+	local tool="$1"
+	shift
+	if out="$(docker exec "$CONTAINER" "/command/$tool" "$@" 2>/dev/null)"; then
+		printf '%s' "$out"
+		return 0
+	fi
+	if out="$(docker exec "$CONTAINER" "$tool" "$@" 2>/dev/null)"; then
+		printf '%s' "$out"
+		return 0
+	fi
+	return 1
+}
+
+# Test for the binary, not for a successful invocation: s6-rc-db -h exits 100.
+s6_tools_available() {
+	docker exec "$CONTAINER" test -x /command/s6-rc-db >/dev/null 2>&1 && return 0
+	docker exec "$CONTAINER" sh -c 'command -v s6-rc-db' >/dev/null 2>&1 && return 0
+	return 1
+}
+
 # ===========================================================================
 # MAIN
 # ===========================================================================
@@ -485,8 +512,16 @@ else
 			tail -30 <<<"$LOGS" | sed 's/^/      /'
 		else
 			# --- R3: what actually landed in the compiled bundle -------------
-			COMPILED="$(in_container s6-rc-db -c /run/s6/db contents user | sort)"
-			if [[ "$COMPILED" == "$EXPECTED" ]]; then
+			if ! s6_tools_available; then
+				S6_TOOLS_USABLE=0
+				notassessed R3 "cannot inspect the compiled database: s6-rc-db is not runnable in this image"
+				note "looked for /command/s6-rc-db and s6-rc-db on PATH"
+				note "the bundle layout was still checked statically by S1 to S3"
+			fi
+			COMPILED="$(s6_tool s6-rc-db -c /run/s6/db contents user | sort)"
+			if [[ $S6_TOOLS_USABLE -eq 0 ]]; then
+				: # already reported as not assessable above
+			elif [[ "$COMPILED" == "$EXPECTED" ]]; then
 				if [[ "$IMAGE_CLASS" == "base" ]]; then
 					pass "R3 compiled user bundle is empty, as expected for a base image"
 				else
@@ -501,11 +536,13 @@ else
 			fi
 
 			# --- R4: and that they are actually up ---------------------------
-			if [[ "$IMAGE_CLASS" == "base" ]]; then
+			if [[ $S6_TOOLS_USABLE -eq 0 ]]; then
+				notassessed R4 "cannot inspect service state: s6-rc is not runnable in this image"
+			elif [[ "$IMAGE_CLASS" == "base" ]]; then
 				notassessed R4 "no user services to start (base image)"
 			else
-				UP="$(in_container s6-rc -a list | sort)"
-				TRANSITIVE="$(in_container s6-rc-db -c /run/s6/db all-dependencies user | sort)"
+				UP="$(s6_tool s6-rc -a list | sort)"
+				TRANSITIVE="$(s6_tool s6-rc-db -c /run/s6/db all-dependencies user | sort)"
 				if [[ -z "$TRANSITIVE" ]]; then
 					TRANSITIVE="$EXPECTED"
 					note "could not read transitive deps; falling back to the registered set"
@@ -575,7 +612,7 @@ else
 					fail R4 "registered but not up: ${r4_unexplained}${r4_collateral}"
 					note "nothing declared these as expected; a service that cannot run"
 					note "in this environment should exit $SDRE_CONFIG_EXIT to say so"
-					note "currently down: $(in_container s6-rc -da list | tr '\n' ' ')"
+					note "currently down: $(s6_tool s6-rc -da list | tr '\n' ' ')"
 					note "--- last 30 log lines ---"
 					tail -30 <<<"$LOGS" | sed 's/^/      /'
 					fi
