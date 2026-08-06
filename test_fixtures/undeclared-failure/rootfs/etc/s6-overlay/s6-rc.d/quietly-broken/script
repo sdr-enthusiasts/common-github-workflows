@@ -1,0 +1,2 @@
+#!/command/with-contenv bash
+echo "quietly-broken: simulated"; exit 1

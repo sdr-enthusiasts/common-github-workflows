@@ -45,8 +45,6 @@ Runtime checks boot the container and interrogate the compiled database.
 | R2  | no `s6-rc-compile: fatal` in the logs                               |
 | R3  | the compiled user bundle equals the expected set                    |
 | R4  | every service in the bundle's transitive closure is up              |
-| R5  | no service that starts in the published image fails to start here   |
-| R6  | no newly added service fails to start                               |
 | P1  | optional, opt-in: an HTTP URL answers inside the container          |
 
 R3 is the decisive one. It is what comes back wrong when the shim silently drops
@@ -77,48 +75,6 @@ reported as _not assessed_ rather than passed or failed.
 This turns an "untestable feeder container" into a "bundle-verifiable container"
 with zero configuration.
 
-R4 alone is not enough, though, and roughly half this fleet lands in degraded
-mode. A oneshot that exits nonzero because a key is missing is indistinguishable
-from one that exits nonzero because it is broken, so leaving it at "not assessed"
-meant a genuinely broken service shipped green.
-
-R5 and R6 close that. The trick is not to guess _why_ a service is down, but to
-ask whether **this build changed it**. The published image defines what "down"
-normally looks like for this image:
-
-- down here, up in the published image → **R5 fails.** Provably this build's
-  fault, since the published image starts it in the same credential-less
-  environment.
-- down here, also down in the published image → pre-existing, does not fail.
-- down here, absent from the published image entirely → **R6 fails.** Newly
-  added and never starts: either broken, or it needs configuration that should
-  be supplied via `container_env`.
-
-This costs one extra container run (~15s) and only on images that actually land
-in degraded mode.
-
-A container can also sit in state `running` while s6-rc bringup was aborted
-entirely, so nothing is up at all — `docker-aprs-tracker` does this when no
-soundcard is present. An empty up-list is reported as a configuration or hardware
-prerequisite, not a failure.
-
-## Baseline comparison
-
-During the migration, comparing against the currently published image was three
-times the only thing that distinguished a real regression from pre-existing
-behaviour. `baseline` makes that first-class: if the target fails, the same
-checks run against the published image.
-
-The comparison is on failure **signatures** — check id plus the offending service
-names — not on bare check ids. Without that, `R4:service-a` failing on the
-published image and `R4:service-b` failing here would both reduce to `R4` and a
-genuinely new fault would be misreported as pre-existing.
-
-Deliberate service changes do not trip anything, because every assertion is
-self-referential: the expected set is read from the image under test, so removing
-a service shrinks both sides of R3 together. The baseline is only ever consulted
-when the image has already failed on its own terms.
-
 ## Usage
 
 Wired into `sdre.yml` by default; `verify_s6_enabled: false` disables it. Direct
@@ -128,7 +84,6 @@ use:
 - uses: $/.github/actions/verify-s6-services
   with:
     image: my-image:local
-    baseline: ghcr.io/sdr-enthusiasts/my-image:latest
 ```
 
 The script is also runnable by hand, which is the fastest way to triage:
@@ -136,7 +91,6 @@ The script is also runnable by hand, which is the fastest way to triage:
 ```bash
 .github/actions/verify-s6-services/verify-s6-services.sh \
   --image ghcr.io/sdr-enthusiasts/docker-adsbhub:latest \
-  --baseline ghcr.io/sdr-enthusiasts/docker-adsbhub:latest
 ```
 
 Exit codes: `0` pass, `1` fail, `2` inconclusive, `3` usage error.
@@ -145,13 +99,12 @@ Exit codes: `0` pass, `1` fail, `2` inconclusive, `3` usage error.
 
 All opt-in, none required.
 
-| input                    | purpose                                                   |
-| ------------------------ | --------------------------------------------------------- |
-| `container_env`          | newline-separated `KEY=VALUE` passed into the container   |
-| `http_probe`             | URL that must answer from inside the container            |
-| `strict_startup`         | fail on services down even when credentials were withheld |
-| `runtime_checks`         | `false` for static-only, for non-executable architectures |
-| `preexisting_is_failure` | fail even when the baseline shows the fault is old        |
+| input            | purpose                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `container_env`  | newline-separated `KEY=VALUE` passed into the container   |
+| `http_probe`     | URL that must answer from inside the container            |
+| `strict_startup` | fail on services down even when credentials were withheld |
+| `runtime_checks` | `false` for static-only, for non-executable architectures |
 
 ## What this does NOT catch
 
@@ -159,16 +112,11 @@ Stated plainly, so the green tick is not over-trusted.
 
 - **Whether a service does anything useful.** R4 asserts s6 considers a service
   up. A service that starts, logs an error and idles forever passes.
-- **A service that has never worked.** R5/R6 fail only on a _change_ against the
-  published image. A service that is broken in both is reported as pre-existing
-  and does not fail the build, by design — otherwise adopting this would have
-  failed roughly half the fleet at once. Use `strict_startup: true` to fail on
-  any service being down.
-- **A newly added service that legitimately needs configuration.** R6 cannot
-  distinguish this from a newly added broken service, so it fails and you supply
-  what it needs via `container_env`. This is deliberately the noisy direction:
-  the cost is one failed build when adding a feeder service, versus silently
-  shipping a service that never runs.
+- **A service broken in a way that still lets it start.** R4 asserts s6 reached
+  the `up` state, nothing more.
+- **A service that wrongly claims 78.** The contract is only as good as its use:
+  a service that exits 78 when it is genuinely broken is excused. It is visible
+  in the source and named in the job summary, but nothing detects a false claim.
 - **Anything requiring credentials or hardware, in the functional sense.** The
   service is asserted to reach the `up` state, not to authenticate, decode or
   feed anything.
@@ -191,6 +139,3 @@ Stated plainly, so the green tick is not over-trusted.
   images with a hand-written `/init` both ship the latter. If such an image was
   _supposed_ to run s6 services, that absence is the bug and this will not tell
   you.
-- **Regressions already present in the published image**, when `baseline` is
-  enabled. Those are reported as pre-existing and, by default, do not fail the
-  build. They are still real problems.

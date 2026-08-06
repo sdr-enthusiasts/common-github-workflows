@@ -56,13 +56,17 @@
 # "untestable feeder container" into a "bundle-verifiable container" with zero
 # per-repo configuration.
 #
-# BASELINE COMPARISON
-# -------------------
-# During the migration, comparing against the currently-published image was
-# three times the only thing that distinguished a real regression from
-# pre-existing behaviour. --baseline makes that first-class: if the target fails,
-# the same checks are run against the published image, and a failure reproduced
-# identically there is reported as PRE-EXISTING rather than as a regression.
+# THE EXIT-CODE CONTRACT
+# ----------------------
+# A service that cannot run in this environment says so by exiting 78
+# (EX_CONFIG): a missing credential, an absent dongle, no sound card. Any other
+# nonzero exit means nobody claimed the failure was expected, so it is a fault.
+#
+# This is what makes the image self-describing. An earlier version compared each
+# build against the currently published image to work out whether a failure was
+# new, because "down for want of a key" and "down because broken" were otherwise
+# indistinguishable. With the contract that comparison is unnecessary: the built
+# container either works or it does not, and it tells you which.
 #
 # Exit codes: 0 pass (or vacuous pass / not-applicable), 1 fail, 2 inconclusive,
 #             3 usage error.
@@ -74,13 +78,22 @@ set -uo pipefail
 # ---------------------------------------------------------------------------
 
 IMAGE=""
-BASELINE=""
 SETTLE_SECONDS="${SETTLE_SECONDS:-8}"
+
+# The exit code by which a service declares "I cannot run in this environment,
+# and that is expected" -- a missing credential, an absent SDR dongle, no sound
+# card. 78 is EX_CONFIG from sysexits.h, so it carries the right meaning to a
+# human reading `docker logs` as well as to this script.
+#
+# The point of the contract is that it makes the DEFAULT safe. Any other nonzero
+# exit from a service means nobody has claimed the failure is expected, so it is
+# treated as a real fault rather than being excused. Guessing the reason from log
+# text or trusting a per-repo annotation both failed that test; this does not.
+SDRE_CONFIG_EXIT="${SDRE_CONFIG_EXIT:-78}"
 HTTP_PROBE=""
 HTTP_PROBE_TIMEOUT=30
 RUNTIME_CHECKS=1
 STRICT_STARTUP=0
-ASSESS_ONLY=0
 declare -a RUN_ENV=()
 
 usage() {
@@ -88,8 +101,6 @@ usage() {
 usage: verify-s6-services.sh --image IMAGE [options]
 
   --image IMAGE            image to verify (required)
-  --baseline IMAGE         published image to compare against when the target
-                           fails, to separate regressions from pre-existing faults
   --env KEY=VALUE          pass an env var to the container (repeatable)
   --settle SECONDS         seconds to wait for s6 bringup (default 8)
   --http-probe URL         additionally require this URL to answer inside the
@@ -106,10 +117,6 @@ while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--image)
 		IMAGE="${2:-}"
-		shift 2
-		;;
-	--baseline)
-		BASELINE="${2:-}"
 		shift 2
 		;;
 	--env)
@@ -134,10 +141,6 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--strict-startup)
 		STRICT_STARTUP=1
-		shift
-		;;
-	--_assess-only)
-		ASSESS_ONLY=1
 		shift
 		;;
 	-h | --help)
@@ -170,44 +173,19 @@ else
 fi
 
 FAILED=0
-# Observations exported for baseline comparison. Populated in degraded mode, where
-# R4 cannot be asserted directly: we cannot tell a service that failed for want of
-# a credential from one that is simply broken. What we CAN do is compare against
-# the published image, which tells us what "not up" normally looks like for this
-# image, and fail only on a change.
-DEGRADED_NOT_UP=""
-OBSERVED_UP=""
-OBSERVED_REGISTERED=""
 declare -a FAILED_CHECKS=()
-declare -a FAILED_SIGS=()
 declare -a NOTASSESSED_CHECKS=()
 
 pass() { printf '%sPASS%s  %s\n' "$C_GRN" "$C_OFF" "$*"; }
 note() { printf '      %s\n' "$*"; }
 head1() { printf '\n%s%s%s\n' "$C_BLD" "$*" "$C_OFF"; }
-warn() { printf '%sWARN%s  %s\n' "$C_YEL" "$C_OFF" "$*"; }
 
-# fail <id> <message>
-#   Records a failing check. FAIL_DETAIL may be set by the caller beforehand to
-#   name the specific offending services; it becomes part of the check's
-#   signature. Signatures, not bare check IDs, are what the baseline comparison
-#   compares -- otherwise "service A is down" in the published image and
-#   "service B is down" here would both reduce to "R4" and a genuinely new fault
-#   would be misreported as pre-existing.
+# fail <id> <message> -- records a failing check.
 fail() {
 	local id="$1"
 	shift
 	printf '%sFAIL%s  [%s] %s\n' "$C_RED" "$C_OFF" "$id" "$*"
 	FAILED_CHECKS+=("$id")
-	local detail="${FAIL_DETAIL:-}"
-	# Normalise so ordering and whitespace cannot affect the comparison.
-	detail="$(tr ' ' '\n' <<<"$detail" | sed '/^$/d' | sort -u | paste -sd, -)"
-	if [[ -n "$detail" ]]; then
-		FAILED_SIGS+=("${id}:${detail}")
-	else
-		FAILED_SIGS+=("$id")
-	fi
-	unset FAIL_DETAIL
 	FAILED=1
 }
 
@@ -275,6 +253,52 @@ snapshot_image() {
 
 LOGS=""
 STATE="unknown"
+declare -A EXIT_CODE=()
+
+# s6-rc reports the real exit status of a failed service, verified against codes
+# 1, 42 and 78:
+#     s6-rc: warning: unable to start service <name>: command exited <code>
+# Only services that actually ran and failed appear here. A service that never
+# started because a dependency failed has no code of its own, which is correct:
+# it is collateral, and the fault belongs to the root.
+parse_exit_codes() {
+	EXIT_CODE=()
+	local svc code line
+	while IFS= read -r line; do
+		svc="${line##*unable to start service }"
+		svc="${svc%%:*}"
+		code="${line##*command exited }"
+		code="${code%% *}"
+		[[ -n "$svc" && "$code" =~ ^[0-9]+$ ]] && EXIT_CODE["$svc"]="$code"
+	done < <(grep -E 'unable to start service .*: command exited [0-9]+' <<<"$LOGS")
+}
+
+# Render a service list with each service's exit code, for human-readable output.
+with_codes() {
+	local out="" svc
+	for svc in $1; do out+="$svc(exit ${EXIT_CODE[$svc]:-none}) "; done
+	printf '%s' "$out"
+}
+
+# Partition a list of not-up services into those that declared an expected
+# environmental failure and those that did not.
+#   $1 = service list, $2 = name of var to receive declared, $3 = unexplained,
+#   $4 = collateral (down with no exit code of their own)
+partition_by_exit() {
+	local list="$1" d="" u="" c="" svc
+	for svc in $list; do
+		if [[ -z "${EXIT_CODE[$svc]:-}" ]]; then
+			c+="$svc "
+		elif [[ "${EXIT_CODE[$svc]}" == "$SDRE_CONFIG_EXIT" ]]; then
+			d+="$svc "
+		else
+			u+="$svc "
+		fi
+	done
+	printf -v "$2" '%s' "$d"
+	printf -v "$3" '%s' "$u"
+	printf -v "$4" '%s' "$c"
+}
 
 start_container() {
 	docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
@@ -285,6 +309,7 @@ start_container() {
 sample() {
 	LOGS="$(docker logs "$CONTAINER" 2>&1)"
 	STATE="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || echo unknown)"
+	parse_exit_codes
 }
 
 # Yields nothing at all when the command cannot be run, rather than letting a
@@ -320,7 +345,6 @@ done
 if [[ ${#legacy_found[@]} -eq 0 ]]; then
 	pass "S1 no deprecated s6-rc.d/user or s6-rc.d/user2 directory"
 else
-	FAIL_DETAIL="${legacy_found[*]}"
 	fail S1 "deprecated bundle directory present: ${legacy_found[*]}"
 	note "this alone makes s6-overlay ignore ALL of user-bundles.d"
 	note "note git does not track empty dirs, but COPY rootfs/ / still copies them"
@@ -374,7 +398,6 @@ base)
 	note "the normal shape of a base image such as :base or :wreadsb"
 	;;
 unregistered)
-	FAIL_DETAIL="$DEFINED"
 	fail S2 "services are defined but NONE are registered -- they can never run"
 	note "defined but unregistered: $(echo "$DEFINED" | tr '\n' ' ')"
 	note "add each to /etc/s6-overlay/user-bundles.d/user/contents.d"
@@ -391,7 +414,6 @@ if [[ "$IMAGE_CLASS" == "service" ]]; then
 	if [[ -z "$missing_def" ]]; then
 		pass "S3 every registration has a matching service definition"
 	else
-		FAIL_DETAIL="$missing_def"
 		fail S3 "registered with no service definition: $(echo "$missing_def" | tr '\n' ' ')"
 	fi
 	if [[ -n "$unregistered" ]]; then
@@ -471,7 +493,6 @@ else
 					pass "R3 compiled user bundle matches the registrations exactly"
 				fi
 			else
-				FAIL_DETAIL="$(comm -3 <(echo "$EXPECTED") <(echo "$COMPILED"))"
 				fail R3 "compiled user bundle does NOT match the registrations"
 				note "expected: $(echo "$EXPECTED" | tr '\n' ' ')"
 				note "compiled: $(echo "$COMPILED" | tr '\n' ' ')"
@@ -484,8 +505,6 @@ else
 				notassessed R4 "no user services to start (base image)"
 			else
 				UP="$(in_container s6-rc -a list | sort)"
-				OBSERVED_UP="$(tr '\n' ' ' <<<"$UP")"
-				OBSERVED_REGISTERED="$(tr '\n' ' ' <<<"$EXPECTED")"
 				TRANSITIVE="$(in_container s6-rc-db -c /run/s6/db all-dependencies user | sort)"
 				if [[ -z "$TRANSITIVE" ]]; then
 					TRANSITIVE="$EXPECTED"
@@ -513,23 +532,53 @@ else
 					# Still comparable: if the published image brings these up in the
 					# same environment and this build brings up nothing, that is a
 					# regression, not a hardware prerequisite.
-					DEGRADED_NOT_UP="$(tr ' ' '\n' <<<"$TRANSITIVE" | sed '/^$/d' | sort -u | paste -sd' ' -)"
 					note "--- last 12 log lines ---"
 					tail -12 <<<"$LOGS" | sed 's/^/      /'
 				elif [[ -z "$not_up" ]]; then
 					pass "R4 all services in the user bundle's transitive closure are up"
 				elif [[ $DEGRADED -eq 1 && $STRICT_STARTUP -eq 0 ]]; then
-					notassessed R4 "service startup not assessed directly (degraded mode)"
-					note "not up: $not_up"
-					# Recorded so the baseline comparison below can still decide
-					# whether this build changed anything.
-					DEGRADED_NOT_UP="$(tr ' ' '\n' <<<"$not_up" | sed '/^$/d' | sort -u | paste -sd' ' -)"
+					# The exit-code contract makes this decidable without any
+					# comparison. A service that declared an expected environmental
+					# failure explains itself; one that failed with any other code
+					# is a real fault. A service with no code of its own never ran
+					# at all, which means it is collateral of a root that did fail,
+					# so it is judged through that root rather than on its own.
+					d4_declared="" d4_unexplained="" d4_collateral=""
+					partition_by_exit "$not_up" d4_declared d4_unexplained d4_collateral
+					if [[ -n "${d4_unexplained// /}" ]]; then
+						fail R4 "services failed without declaring the failure expected: $(with_codes "$d4_unexplained")"
+						note "declared as expected (exit $SDRE_CONFIG_EXIT): ${d4_declared:-none}"
+						note "a service that cannot run for want of configuration or"
+						note "hardware should exit $SDRE_CONFIG_EXIT to say so; any other code is"
+						note "treated as a real fault, which is the point of the contract"
+						note "--- last 20 log lines ---"
+						tail -20 <<<"$LOGS" | sed 's/^/      /'
+					elif [[ -n "${d4_declared// /}" ]]; then
+						pass "R4 every service that did not start declared an expected environmental failure"
+						note "declared (exit $SDRE_CONFIG_EXIT): $d4_declared"
+						[[ -n "${d4_collateral// /}" ]] &&
+							note "did not run as a consequence: $d4_collateral"
+					else
+						notassessed R4 "service startup not assessed directly (degraded mode)"
+						note "not up: $not_up"
+						note "none of these reported an exit code, so nothing declared"
+						note "whether the failure is expected"
+					fi
 				else
-					FAIL_DETAIL="$not_up"
-					fail R4 "registered but not up: $not_up"
+					r4_declared="" r4_unexplained="" r4_collateral=""
+					partition_by_exit "$not_up" r4_declared r4_unexplained r4_collateral
+					[[ -n "${r4_declared// /}" ]] &&
+						note "declared an expected environmental failure (exit $SDRE_CONFIG_EXIT): $r4_declared"
+					if [[ -z "${r4_unexplained// /}" && -z "${r4_collateral// /}" ]]; then
+						pass "R4 every service either started or declared an expected environmental failure"
+					else
+					fail R4 "registered but not up: ${r4_unexplained}${r4_collateral}"
+					note "nothing declared these as expected; a service that cannot run"
+					note "in this environment should exit $SDRE_CONFIG_EXIT to say so"
 					note "currently down: $(in_container s6-rc -da list | tr '\n' ' ')"
 					note "--- last 30 log lines ---"
 					tail -30 <<<"$LOGS" | sed 's/^/      /'
+					fi
 				fi
 			fi
 
@@ -550,7 +599,6 @@ else
 				elif ! in_container sh -c 'command -v curl >/dev/null 2>&1'; then
 					notassessed P1 "HTTP probe skipped: curl not present in image"
 				else
-					FAIL_DETAIL="$HTTP_PROBE"
 					fail P1 "HTTP probe did not answer within ${HTTP_PROBE_TIMEOUT}s: $HTTP_PROBE"
 				fi
 			fi
@@ -559,183 +607,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Result, plus baseline comparison when the target failed
+# Result
 # ---------------------------------------------------------------------------
-
-emit_machine_summary() {
-	printf '\n__RESULT__=%s\n' "$1"
-	printf '__FAILED_CHECKS__=%s\n' "${FAILED_CHECKS[*]+${FAILED_CHECKS[*]}}"
-	printf '__FAILED_SIGS__=%s\n' "${FAILED_SIGS[*]+${FAILED_SIGS[*]}}"
-	printf '__DEGRADED_NOT_UP__=%s\n' "$DEGRADED_NOT_UP"
-	printf '__OBSERVED_UP__=%s\n' "$OBSERVED_UP"
-	printf '__OBSERVED_REGISTERED__=%s\n' "$OBSERVED_REGISTERED"
-}
-
-# ---------------------------------------------------------------------------
-# Degraded-mode startup comparison.
-#
-# In degraded mode R4 cannot be decided on its own: a oneshot that exits nonzero
-# because a key is missing is indistinguishable from one that exits nonzero
-# because it is broken. Both halt the container, and roughly half this fleet is
-# in that state, so leaving it at "not assessed" means a genuinely broken service
-# ships green.
-#
-# The way out is not to guess why a service is down, but to ask whether THIS
-# BUILD changed it. The published image defines what "down" normally looks like
-# for this image. Anything that was up there and is down here is a regression we
-# can prove. A service that does not exist there at all and does not start here
-# is newly broken or newly needs configuration; either way it is a change worth
-# stopping for, and it is reported separately so the cause is obvious.
-# ---------------------------------------------------------------------------
-if [[ $FAILED -eq 0 && $ASSESS_ONLY -eq 0 && -n "${DEGRADED_NOT_UP// /}" && -n "$BASELINE" ]]; then
-	head1 "Degraded-mode startup comparison"
-	note "R4 could not be decided directly, so comparing against the published"
-	note "image to establish whether this build changed anything: $BASELINE"
-
-	if ! docker image inspect "$BASELINE" >/dev/null 2>&1 &&
-		! docker pull -q "$BASELINE" >/dev/null 2>&1; then
-		warn "baseline not available, so startup changes cannot be assessed"
-		note "tried: $BASELINE (normal for a first build)"
-	else
-		declare -a cmp_args=(--image "$BASELINE" --settle "$SETTLE_SECONDS" --_assess-only)
-		i=0
-		while [[ $i -lt ${#RUN_ENV[@]} ]]; do
-			[[ "${RUN_ENV[i]}" == "-e" ]] && cmp_args+=(--env "${RUN_ENV[i + 1]}")
-			i=$((i + 2))
-		done
-		cmp_out="$("$0" "${cmp_args[@]}" 2>&1)"
-		base_up="$(sed -n 's/^__OBSERVED_UP__=//p' <<<"$cmp_out" | tail -1)"
-		base_notup="$(sed -n 's/^__DEGRADED_NOT_UP__=//p' <<<"$cmp_out" | tail -1)"
-		base_reg="$(sed -n 's/^__OBSERVED_REGISTERED__=//p' <<<"$cmp_out" | tail -1)"
-
-		note "published: up=[${base_up% }] not-up=[${base_notup% }]"
-		note "this build: not-up=[${DEGRADED_NOT_UP}]"
-
-		# Exact whole-line membership. Emphatically NOT grep -w: hyphens are not
-		# word characters, so `grep -w ssl` matches inside `10-ssl` and `grep -w
-		# rbfeeder` matches inside `01-show-rbfeeder-changelog`. These service
-		# naming conventions make near-miss matches the norm, and the effect was
-		# to report an image as a regression against itself.
-		in_set() { grep -qxF -- "$1" <<<"$(tr ' ' '\n' <<<"$2" | sed '/^$/d')"; }
-
-		regressed="" newly_down="" preexisting=""
-		for svc in $DEGRADED_NOT_UP; do
-			if in_set "$svc" "$base_up"; then
-				regressed+="$svc "
-			elif in_set "$svc" "$base_notup" || in_set "$svc" "$base_reg"; then
-				preexisting+="$svc "
-			else
-				newly_down+="$svc "
-			fi
-		done
-
-		[[ -n "${preexisting// /}" ]] &&
-			note "down in the published image too, so not a change: $preexisting"
-
-		if [[ -n "${regressed// /}" ]]; then
-			FAIL_DETAIL="$regressed"
-			fail R5 "services that are up in the published image are NOT up here: $regressed"
-			note "this build stopped them starting; it is not a missing credential,"
-			note "because the published image starts them in this same environment"
-		fi
-		if [[ -n "${newly_down// /}" ]]; then
-			FAIL_DETAIL="$newly_down"
-			fail R6 "new services that never start: $newly_down"
-			note "these do not exist in the published image and do not come up here"
-			note "either they are broken, or they need configuration this check does"
-			note "not supply. If the latter, pass what they need via container_env."
-		fi
-		if [[ -z "${regressed// /}${newly_down// /}" ]]; then
-			pass "R5 no startup change versus the published image"
-		fi
-	fi
-fi
 
 head1 "Result"
+
 
 if [[ $FAILED -eq 0 ]]; then
 	printf '%sALL CHECKS PASSED%s for %s\n' "$C_GRN" "$C_OFF" "$IMAGE"
 	if [[ ${#NOTASSESSED_CHECKS[@]} -gt 0 ]]; then
 		note "not assessed: ${NOTASSESSED_CHECKS[*]}"
 	fi
-	[[ $ASSESS_ONLY -eq 1 ]] && emit_machine_summary PASS
 	exit 0
 fi
 
 printf '%sVERIFICATION FAILED%s for %s (failed: %s)\n' \
 	"$C_RED" "$C_OFF" "$IMAGE" "${FAILED_CHECKS[*]}"
-
-if [[ $ASSESS_ONLY -eq 1 ]]; then
-	emit_machine_summary FAIL
-	exit 1
-fi
-
-# Compare against the published image. Three times during the migration this was
-# the only thing that separated a real regression from pre-existing behaviour.
-if [[ -n "$BASELINE" ]]; then
-	head1 "Baseline comparison"
-
-	# A first-ever build has nothing published to compare against, and a missing
-	# baseline must not be mistaken for a baseline that fails. Establish
-	# availability explicitly before drawing any conclusion from the comparison.
-	if ! docker image inspect "$BASELINE" >/dev/null 2>&1 &&
-		! docker pull -q "$BASELINE" >/dev/null 2>&1; then
-		warn "baseline image is not available, so regression analysis is not possible"
-		note "tried: $BASELINE"
-		note "this is normal for a first build or a newly renamed tag"
-		note "reporting the target's own failures unchanged"
-		exit 1
-	fi
-
-	note "re-running the same checks against the published image to determine"
-	note "whether this is a regression or pre-existing: $BASELINE"
-
-	declare -a base_args=(--image "$BASELINE" --settle "$SETTLE_SECONDS" --_assess-only)
-	[[ $RUNTIME_CHECKS -eq 0 ]] && base_args+=(--no-runtime-checks)
-	[[ $STRICT_STARTUP -eq 1 ]] && base_args+=(--strict-startup)
-	[[ -n "$HTTP_PROBE" ]] && base_args+=(--http-probe "$HTTP_PROBE")
-	i=0
-	while [[ $i -lt ${#RUN_ENV[@]} ]]; do
-		[[ "${RUN_ENV[i]}" == "-e" ]] && base_args+=(--env "${RUN_ENV[i + 1]}")
-		i=$((i + 2))
-	done
-
-	base_out="$("$0" "${base_args[@]}" 2>&1)"
-	while IFS= read -r line; do printf '  | %s\n' "$line"; done <<<"$base_out"
-	base_sig_raw="$(sed -n 's/^__FAILED_SIGS__=//p' <<<"$base_out" | tail -1)"
-	read -r -a base_sig_arr <<<"$base_sig_raw"
-
-	# Compare signatures (check id + offending service names), not bare check ids.
-	# "R4:svc-a" on the published image and "R4:svc-b" here are different faults
-	# even though both are R4, and must be reported as a regression.
-	target_sig="$(printf '%s\n' "${FAILED_SIGS[@]}" | sort -u | tr '\n' ' ')"
-	base_sig="$(printf '%s\n' "${base_sig_arr[@]+${base_sig_arr[@]}}" | sort -u | tr '\n' ' ')"
-
-	head1 "Verdict"
-	if [[ "$target_sig" == "$base_sig" ]]; then
-		warn "PRE-EXISTING: the published image fails identically ($base_sig)"
-		note "same checks AND same offending services, so this build did not"
-		note "introduce the fault. It is still a real problem, but not a regression."
-		if [[ "${VERIFY_S6_BASELINE_PREEXISTING_IS_FAILURE:-0}" == "1" ]]; then
-			exit 1
-		fi
-		exit 0
-	fi
-
-	new_failures="$(comm -23 \
-		<(printf '%s\n' "${FAILED_SIGS[@]}" | sort -u) \
-		<(printf '%s\n' "${base_sig_arr[@]+${base_sig_arr[@]}}" | sort -u) | tr '\n' ' ')"
-	printf '%sREGRESSION%s for %s\n' "$C_RED" "$C_OFF" "$IMAGE"
-	if [[ -n "${new_failures// /}" ]]; then
-		note "new here, absent from the published image: $new_failures"
-	fi
-	fixed="$(comm -13 \
-		<(printf '%s\n' "${FAILED_SIGS[@]}" | sort -u) \
-		<(printf '%s\n' "${base_sig_arr[@]+${base_sig_arr[@]}}" | sort -u) | tr '\n' ' ')"
-	if [[ -n "${fixed// /}" ]]; then
-		note "present on the published image but not here (improved): $fixed"
-	fi
-	note "signature format is <check>:<offending services>"
-fi
-
 exit 1
