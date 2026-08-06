@@ -302,7 +302,11 @@ partition_by_exit() {
 
 start_container() {
 	docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-	docker run -d --name "$CONTAINER" -e S6_VERBOSITY=2 \
+	# SDRE_VERIFY marks a verification run. A container that deliberately hangs
+	# to keep its logs readable can check for it and exit 78 instead, so that its
+	# services become inspectable without changing what a user sees. Nothing
+	# depends on the container honouring it.
+	docker run -d --name "$CONTAINER" -e S6_VERBOSITY=2 -e SDRE_VERIFY=1 \
 		"${RUN_ENV[@]+"${RUN_ENV[@]}"}" "$@" "$IMAGE" >/dev/null 2>&1
 }
 
