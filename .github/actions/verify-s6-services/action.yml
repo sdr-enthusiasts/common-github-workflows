@@ -9,13 +9,6 @@ inputs:
   image:
     description: "The image to verify (must be present locally or pullable)"
     required: true
-  baseline:
-    description: >-
-      Optional published image to compare against if the target fails. A failure
-      reproduced identically on the baseline is reported as pre-existing rather
-      than as a regression introduced by this build.
-    required: false
-    default: ""
   runtime_checks:
     description: >-
       Set to false to run static checks only. Static checks execute nothing from
@@ -51,12 +44,6 @@ inputs:
       start its services without user credentials.
     required: false
     default: "false"
-  preexisting_is_failure:
-    description: >-
-      When a baseline comparison shows the fault is pre-existing, still fail.
-      Off by default so that pre-existing faults do not block unrelated changes.
-    required: false
-    default: "false"
 
 outputs:
   result:
@@ -71,20 +58,17 @@ runs:
       shell: bash
       env:
         VERIFY_IMAGE: ${{ inputs.image }}
-        VERIFY_BASELINE: ${{ inputs.baseline }}
         VERIFY_RUNTIME_CHECKS: ${{ inputs.runtime_checks }}
         VERIFY_SETTLE: ${{ inputs.settle_seconds }}
         VERIFY_CONTAINER_ENV: ${{ inputs.container_env }}
         VERIFY_HTTP_PROBE: ${{ inputs.http_probe }}
         VERIFY_HTTP_PROBE_TIMEOUT: ${{ inputs.http_probe_timeout }}
         VERIFY_STRICT_STARTUP: ${{ inputs.strict_startup }}
-        VERIFY_S6_BASELINE_PREEXISTING_IS_FAILURE: ${{ inputs.preexisting_is_failure == 'true' && '1' || '0' }}
       run: |
         set -uo pipefail
 
         args=(--image "$VERIFY_IMAGE" --settle "$VERIFY_SETTLE")
 
-        [[ -n "$VERIFY_BASELINE" ]] && args+=(--baseline "$VERIFY_BASELINE")
         [[ "${VERIFY_RUNTIME_CHECKS,,}" != "true" ]] && args+=(--no-runtime-checks)
         [[ "${VERIFY_STRICT_STARTUP,,}" == "true" ]] && args+=(--strict-startup)
         if [[ -n "$VERIFY_HTTP_PROBE" ]]; then

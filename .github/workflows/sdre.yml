@@ -108,13 +108,6 @@ on:
         type: string
         required: false
         default: "linux/amd64"
-      verify_s6_compare_to_published:
-        description: >-
-          If verification fails, re-run it against the currently published image
-          to distinguish a regression from a pre-existing fault.
-        type: boolean
-        required: false
-        default: true
       verify_s6_container_env:
         description: >-
           Optional newline-separated KEY=VALUE pairs to pass into the container.
@@ -606,9 +599,6 @@ jobs:
           # and always run. The regression this exists for is architecture
           # independent, so asserting it at runtime on one platform is sufficient.
           runtime_checks: ${{ inputs.verify_s6_runtime_platform == 'all' || inputs.verify_s6_runtime_platform == matrix.TARGET_NAME }}
-          # The currently published tag is the natural baseline and needs no
-          # configuration. Only consulted when the target has already failed.
-          baseline: ${{ inputs.verify_s6_compare_to_published && format('ghcr.io/{0}:{1}', needs.workflows_env.outputs.ghcr_repo, needs.workflows_env.outputs.build_latest_tag) || '' }}
           container_env: ${{ inputs.verify_s6_container_env }}
           http_probe: ${{ inputs.verify_s6_http_probe }}
           strict_startup: ${{ inputs.verify_s6_strict_startup }}
