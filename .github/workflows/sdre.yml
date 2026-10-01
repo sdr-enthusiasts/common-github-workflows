@@ -138,7 +138,7 @@ on:
 jobs:
   workflows_env:
     name: Prepare workflow environment
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     outputs:
       docker_build_context: ${{ steps.workflow_env_build.outputs.context }}
