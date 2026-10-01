@@ -390,7 +390,7 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true'  &&   matrix.ENABLED }}
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
@@ -644,7 +644,7 @@ jobs:
       # Log into ghcr.io
       - name: Login to GitHub Container Registry
         if: ${{ needs.workflows_env.outputs.output_ghcr_io_enabled == 'true' }}
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ needs.workflows_env.outputs.ghcr_repo_owner }}
