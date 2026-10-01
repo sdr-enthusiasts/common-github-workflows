@@ -216,7 +216,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: workflow_env_check_cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -659,7 +659,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -844,7 +844,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -1033,7 +1033,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
@@ -1237,7 +1237,7 @@ jobs:
       - name: "check 'cache_enabled'"
         if: ${{ inputs.cache_enabled }}
         id: populate_cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.cache_path }}
           key: ${{ inputs.cache_key }}
