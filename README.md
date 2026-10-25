@@ -129,6 +129,48 @@ build_and_push:
     get_version_method: git_commit_hash_short
 ```
 
+### Building on the next Debian release (`base_variant`)
+
+`sdre.yml` can build an image on the next Debian release's base images while the
+stable build carries on unchanged. Leave `base_variant` blank (the default) for
+the normal stable build; set it to the next release's codename for the next
+build:
+
+```yaml
+build_and_push_next:
+  uses: sdr-enthusiasts/common-github-workflows/.github/workflows/sdre.yml@<sha>
+  with:
+    push_enabled: true
+    ghcr_repo_owner: ${{ github.repository_owner }}
+    ghcr_repo: ${{ github.repository }}
+    base_variant: forky
+  secrets:
+    ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+With `base_variant: forky`:
+
+| Reference in the Dockerfile               | Built from                                      |
+| ----------------------------------------- | ----------------------------------------------- |
+| `ghcr.io/sdr-enthusiasts/docker-baseimage:<tag>` | `ghcr.io/sdr-enthusiasts/docker-baseimage:forky-<tag>` |
+| `ghcr.io/sdr-enthusiasts/<image>:latest`  | `ghcr.io/sdr-enthusiasts/<image>:next`          |
+| `ghcr.io/sdr-enthusiasts/<image>:<tag>`   | `ghcr.io/sdr-enthusiasts/<image>:next-<tag>`    |
+
+The image itself is published as `:next` instead of `:latest`, or `:next-<tag>`
+when `docker_latest_tag` is something else, plus the usual `-build-N` tag.
+
+- Only references after `FROM`, `COPY --from=` and `RUN --mount=...,from=` are
+  rewritten, and only for `ghcr.io/sdr-enthusiasts` images.
+- The rewrite runs after `dockerfile_changes` and `build_baseimage_url`, so it
+  composes with both.
+- The build fails if any rewritten image is not published, or if a reference is
+  pinned by digest, so a next build never quietly builds on a stable image.
+- `base_variant_exclude` lists SDR-E images that do not depend on the Debian
+  release and must be left as written, e.g. `base_variant_exclude: acars-bridge`.
+
+The rules live in `.github/actions/apply-base-variant/apply-base-variant.sh`;
+`test_fixtures/run-base-variant-selftest.sh` tests them.
+
 ### Secrets
 
 | Input             | Description                                                             |

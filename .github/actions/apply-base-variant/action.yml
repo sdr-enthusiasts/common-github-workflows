@@ -1,0 +1,61 @@
+---
+name: "Apply base variant"
+description: >-
+  Point a Dockerfile's SDR-E image references at the next-Debian-release images
+  (docker-baseimage:<variant>-<tag>, other images :next / :next-<tag>), and fail
+  if any of them is not published. See apply-base-variant.sh for the rules.
+
+inputs:
+  variant:
+    description: "Debian codename of the base variant, e.g. forky"
+    required: true
+  file:
+    description: "Dockerfile to rewrite in place"
+    required: true
+  owner:
+    description: "ghcr.io owner whose image references are rewritten"
+    required: false
+    default: "sdr-enthusiasts"
+  exclude:
+    description: >-
+      Comma or space separated image names (under owner) that do not depend on
+      the Debian release and are left exactly as written, e.g. acars-bridge
+    required: false
+    default: ""
+  verify_exists:
+    description: "Fail if a rewritten image reference is not published"
+    required: false
+    default: "true"
+  latest_tag:
+    description: "The tag this image would be published as on stable"
+    required: true
+
+outputs:
+  tag:
+    description: "The tag to publish this image as on the base variant"
+    value: ${{ steps.rewrite.outputs.tag }}
+
+runs:
+  using: composite
+  steps:
+    - name: Rewrite image references
+      id: rewrite
+      shell: bash
+      env:
+        BASE_VARIANT: ${{ inputs.variant }}
+        BUILD_FILE: ${{ inputs.file }}
+        IMAGE_OWNER: ${{ inputs.owner }}
+        EXCLUDE: ${{ inputs.exclude }}
+        VERIFY_EXISTS: ${{ inputs.verify_exists }}
+        LATEST_TAG: ${{ inputs.latest_tag }}
+        APPLY: ${{ github.action_path }}/apply-base-variant.sh
+      run: |
+        set -euo pipefail
+        args=(--variant "$BASE_VARIANT" --file "$BUILD_FILE" --owner "$IMAGE_OWNER" --exclude "$EXCLUDE")
+        if [[ "${VERIFY_EXISTS,,}" == "true" ]]; then
+          args+=(--verify-exists)
+        fi
+        "$APPLY" "${args[@]}"
+        tag="$("$APPLY" --variant "$BASE_VARIANT" --map-tag "$LATEST_TAG")"
+        echo "Publishing as: ${tag}"
+        echo "tag=${tag}" >> "$GITHUB_OUTPUT"

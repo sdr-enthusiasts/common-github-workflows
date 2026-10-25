@@ -86,6 +86,27 @@ on:
         type: string
         required: false
         default: "latest"
+      base_variant:
+        description: >-
+          Debian codename of the next-release base images to build on, e.g.
+          'forky'. Blank (the default) builds on the stable images. When set,
+          docker-baseimage:<tag> references become :<base_variant>-<tag>, other
+          SDR-E image references become :next / :next-<tag>, and the image is
+          published as :next (instead of :latest) or :next-<tag>. Applied after
+          dockerfile_changes and build_baseimage_url, so it composes with both.
+        type: string
+        required: false
+        default: ""
+      base_variant_exclude:
+        description: >-
+          Comma or space separated SDR-E image names to leave untouched when
+          base_variant is set, for images that do not depend on the Debian
+          release (e.g. acars-bridge, a static binary in a scratch image). Every
+          other SDR-E reference must have a published next variant or the build
+          fails.
+        type: string
+        required: false
+        default: ""
 
       # --- runtime verification -------------------------------------------
       # A green build used to mean only "the image built". s6-overlay 3.2.3.1
@@ -155,6 +176,7 @@ jobs:
       # explanation of how this is wrapped and why callers look the way they do.
       build_baseimage_url: ${{ steps.workflow_env_build_baseimage_test.outputs.build_baseimage_url }}
       dockerfile_changes: ${{ steps.workflow_env_dockerfile_changes.outputs.dockerfile_changes }}
+      base_variant: ${{ steps.workflow_env_base_variant.outputs.base_variant }}
       digest_id: ${{ steps.export_digest.outputs.digest_id }}
 
     steps:
@@ -351,6 +373,23 @@ jobs:
             echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> $GITHUB_OUTPUT
           fi
           exit $FAIL_STEP
+
+      # Fail before any build leg starts. apply-base-variant.sh validates again,
+      # because it is the code that actually uses the value.
+      - name: "check 'base_variant'"
+        id: workflow_env_base_variant
+        env:
+          BASE_VARIANT: ${{ inputs.base_variant }}
+        run: |
+          set -x
+          if [[ -z "${BASE_VARIANT}" ]]; then
+            exit 0
+          fi
+          if [[ ! "${BASE_VARIANT}" =~ ^[a-z][a-z0-9]*$ ]]; then
+            echo "::error title=${{ github.job }}: Environment variable invalid::base_variant must be a lowercase Debian codename such as 'forky'"
+            exit 1
+          fi
+          echo "base_variant=${BASE_VARIANT}" >> "$GITHUB_OUTPUT"
   build:
     name: Build (manifest)
     runs-on: ${{ matrix.os }}
@@ -407,7 +446,9 @@ jobs:
       #
       # Both steps below build the SAME artefact: <docker_build_file>.use, which
       # is what actually gets built. Every path through this section must produce
-      # it, which is why there is an explicit copy for the no-rewrite case.
+      # it, which is why there is an explicit copy for the no-rewrite case. When
+      # base_variant is set, "Apply base variant" then rewrites that .use file;
+      # it is not a sed input and is unaffected by the caveats below.
       #
       # HOW build_baseimage_url AND dockerfile_changes ARE INTERPRETED
       #
@@ -482,10 +523,32 @@ jobs:
           set -euo pipefail
           cp "$BUILD_FILE" "${BUILD_FILE}.use"
 
+      # Build on the next-Debian-release images instead of the stable ones.
+      # Deliberately the LAST rewrite: it re-points whatever references
+      # dockerfile_changes and build_baseimage_url left behind, so feature
+      # toggles, FROM swaps and test redirects all compose with it (e.g.
+      # :base-test-pr becomes :forky-base-test-pr). It fails if any resulting
+      # image is not published, so a next build can never quietly fall back to
+      # a stable image. Uses `$/` for the same pinning reason as the s6 verifier
+      # below.
+      - name: Apply base variant
+        id: base_variant
+        if: ${{ needs.workflows_env.outputs.base_variant != ''  &&   matrix.ENABLED }}
+        uses: $/.github/actions/apply-base-variant
+        with:
+          variant: ${{ needs.workflows_env.outputs.base_variant }}
+          exclude: ${{ inputs.base_variant_exclude }}
+          file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          latest_tag: ${{ needs.workflows_env.outputs.build_latest_tag }}
+
       # Determine image names/tags
       - name: Determine image names/tags
         id: image_names_tags
         if: ${{ matrix.ENABLED }}
+        env:
+          # On a base variant build the published tag moves to the next channel
+          # (latest -> next, <tag> -> next-<tag>); otherwise it is unchanged.
+          PUBLISH_TAG: ${{ steps.base_variant.outputs.tag || needs.workflows_env.outputs.build_latest_tag }}
         run: |
           set -x
           IMAGE_NAMES=()
@@ -499,14 +562,14 @@ jobs:
           echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
           IMAGE_TAGS=()
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
-            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}")
-            IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-build-$GITHUB_RUN_NUMBER")
+            IMAGE_TAGS+=("${PUBLISH_TAG}")
+            IMAGE_TAGS+=("${PUBLISH_TAG}-build-$GITHUB_RUN_NUMBER")
           fi
           if [[ "${{ needs.workflows_env.outputs.build_baseimage_test }}" == "true" ]]; then
-            if [[ "${{ needs.workflows_env.outputs.build_latest_tag }}" == "latest" ]]; then
+            if [[ "${PUBLISH_TAG}" == "latest" ]]; then
               IMAGE_TAGS+=("baseimage-test")
             else
-              IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}-baseimage-test")
+              IMAGE_TAGS+=("${PUBLISH_TAG}-baseimage-test")
             fi
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"

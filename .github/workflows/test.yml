@@ -39,6 +39,36 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
+  # End-to-end check of base_variant through the real workflow: the fixture's
+  # FROM names the stable base and its RUN fails unless it is running on forky.
+  build_base_variant:
+    uses: ./.github/workflows/sdre.yml
+    name: "Build on the forky base variant"
+    with:
+      push_enabled: false
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      docker_build_file: test_fixtures/base-variant-build/Dockerfile
+      base_variant: forky
+      platform_linux_arm32v7_enabled: false
+      platform_linux_arm64v8_enabled: false
+      verify_s6_enabled: false
+
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Proves the base variant rewrite handles every reference form and still
+  # refuses each input that would otherwise yield a mislabelled "next" image.
+  base_variant_selftest:
+    name: "Base variant rewrite self-test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the base variant self-test
+        run: ./test_fixtures/run-base-variant-selftest.sh
+
   # Proves the s6 verifier still detects each way a container can be broken.
   # The positive cases matter far less than the negative ones: every image that
   # carried the s6-overlay 3.2.3.1 regression built and ran successfully, so a
@@ -59,6 +89,8 @@ jobs:
     needs:
       - build
       - build_baseimage_test
+      - build_base_variant
+      - base_variant_selftest
       - verify_s6_selftest
     if: always()
     steps:
@@ -66,10 +98,14 @@ jobs:
         run: |
           echo "build: ${{ needs.build.result }}"
           echo "build_baseimage_test: ${{ needs.build_baseimage_test.result }}"
+          echo "build_base_variant: ${{ needs.build_base_variant.result }}"
+          echo "base_variant_selftest: ${{ needs.base_variant_selftest.result }}"
           echo "verify_s6_selftest: ${{ needs.verify_s6_selftest.result }}"
 
           if [[ "${{ needs.build.result }}" != "success" ]] ||
              [[ "${{ needs.build_baseimage_test.result }}" != "success" ]] ||
+             [[ "${{ needs.build_base_variant.result }}" != "success" ]] ||
+             [[ "${{ needs.base_variant_selftest.result }}" != "success" ]] ||
              [[ "${{ needs.verify_s6_selftest.result }}" != "success" ]]; then
             echo "❌ One or more jobs failed"
             exit 1
