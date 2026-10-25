@@ -31,7 +31,7 @@ bad() {
 rewrite() {
 	local fixture="$1" file="$work/$1.Dockerfile" out
 	shift
-	cp "$FIXTURES/$fixture/Dockerfile" "$file"
+	cp "$FIXTURES/$fixture/input" "$file"
 
 	if ! out="$("$APPLY" --variant forky --file "$file" "$@" 2>&1)"; then
 		bad "$fixture: rewrite failed"
@@ -85,7 +85,7 @@ map() {
 }
 
 echo "Rewrites:"
-for fixture in multi-stage child-images composed-test-redirect already-on-variant; do
+for fixture in multi-stage child-images composed-test-redirect already-on-variant instruction-parsing; do
 	rewrite "$fixture"
 done
 rewrite excluded-image --exclude acars-bridge
@@ -102,6 +102,22 @@ refuse "digest-pinned reference" "pinned by digest" --variant forky
 
 printf 'FROM debian:trixie-slim\nRUN echo ghcr.io/sdr-enthusiasts/docker-baseimage:base\n' >"$work/refuse.src"
 refuse "no SDR-E references" "no ghcr.io/sdr-enthusiasts/" --variant forky
+
+# References the build does not consume must not count as found.
+printf 'FROM debian:trixie-slim\n# COPY --from=ghcr.io/sdr-enthusiasts/docker-baseimage:base /a /a\n' >"$work/refuse.src"
+refuse "reference only in a comment" "no ghcr.io/sdr-enthusiasts/" --variant forky
+
+printf 'FROM debian:trixie-slim\nRUN echo from=ghcr.io/sdr-enthusiasts/docker-baseimage:base\n' >"$work/refuse.src"
+refuse "reference only in command text" "no ghcr.io/sdr-enthusiasts/" --variant forky
+
+printf "ARG BASE=ghcr.io/sdr-enthusiasts/docker-baseimage:base\nFROM \$BASE\n" >"$work/refuse.src"
+refuse "build argument in FROM" "uses a build argument" --variant forky
+
+printf "FROM ghcr.io/sdr-enthusiasts/docker-baseimage:base\nCOPY --from=\${STAGE} /a /a\n" >"$work/refuse.src"
+refuse "build argument in COPY --from" "uses a build argument" --variant forky
+
+printf '# escape=`\nFROM ghcr.io/sdr-enthusiasts/docker-baseimage:base\n' >"$work/refuse.src"
+refuse "escape directive" "escape=" --variant forky
 
 printf 'FROM ghcr.io/sdr-enthusiasts/acars-bridge:latest\n' >"$work/refuse.src"
 refuse "only excluded references" "no ghcr.io/sdr-enthusiasts/" --variant forky --exclude acars-bridge

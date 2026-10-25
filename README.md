@@ -159,12 +159,15 @@ With `base_variant: forky`:
 The image itself is published as `:next` instead of `:latest`, or `:next-<tag>`
 when `docker_latest_tag` is something else, plus the usual `-build-N` tag.
 
-- Only references after `FROM`, `COPY --from=` and `RUN --mount=...,from=` are
-  rewritten, and only for `ghcr.io/sdr-enthusiasts` images.
+- The Dockerfile is read as whole instructions (continuation lines joined), and
+  only images an instruction consumes are rewritten: `FROM`'s image,
+  `COPY --from=` and `RUN --mount=...,from=`, for `ghcr.io/sdr-enthusiasts`
+  images. Comments, `LABEL`s, command text and heredoc bodies are never touched.
 - The rewrite runs after `dockerfile_changes` and `build_baseimage_url`, so it
   composes with both.
-- The build fails if any rewritten image is not published, or if a reference is
-  pinned by digest, so a next build never quietly builds on a stable image.
+- The build fails if any rewritten image is not published, if a reference is
+  pinned by digest, or if a `FROM`/`--from` uses a build argument (e.g.
+  `FROM $BASE`), so a next build never quietly builds on a stable image.
 - `base_variant_exclude` lists SDR-E images that do not depend on the Debian
   release and must be left as written, e.g. `base_variant_exclude: acars-bridge`.
 
