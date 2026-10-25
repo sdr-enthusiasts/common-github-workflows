@@ -1,0 +1,13 @@
+FROM rust:1.97.0-trixie AS builder
+RUN cargo build --release
+
+FROM --platform=$BUILDPLATFORM ghcr.io/sdr-enthusiasts/docker-baseimage:forky-mlatclient AS mlat
+
+from ghcr.io/sdr-enthusiasts/docker-baseimage:forky-base
+LABEL org.opencontainers.image.base.name="ghcr.io/sdr-enthusiasts/docker-baseimage:base"
+COPY --from=ghcr.io/sdr-enthusiasts/docker-baseimage:forky-wreadsb /usr/local/bin/readsb /usr/local/bin/
+COPY --from=builder /target/release/app /usr/local/bin/
+RUN --mount=type=bind,from=ghcr.io/sdr-enthusiasts/docker-baseimage:forky-mlatclient,source=/,target=/mlat \
+    --mount=type=bind,from=ghcr.io/sdr-enthusiasts/docker-baseimage:forky-soapy-full,source=/,target=/soapy \
+    echo "built on ghcr.io/sdr-enthusiasts/docker-baseimage:base"
+# FROM ghcr.io/sdr-enthusiasts/docker-baseimage:dump978-full

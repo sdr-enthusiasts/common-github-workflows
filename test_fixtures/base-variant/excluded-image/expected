@@ -1,0 +1,4 @@
+FROM ghcr.io/sdr-enthusiasts/acars-bridge:latest AS builder
+COPY --from=ghcr.io/sdr-enthusiasts/acars-bridge:latest@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa /acars-bridge /opt/acars-bridge
+FROM ghcr.io/sdr-enthusiasts/docker-baseimage:forky-acars-decoder-soapy
+COPY --from=builder /acars-bridge /opt/acars-bridge
