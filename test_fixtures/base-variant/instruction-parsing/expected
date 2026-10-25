@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1
+FROM \
+    ghcr.io/sdr-enthusiasts/docker-baseimage:forky-base \
+    AS build
+# COPY --from=ghcr.io/sdr-enthusiasts/docker-baseimage:wreadsb /a /a
+LABEL note="--from=ghcr.io/sdr-enthusiasts/docker-baseimage:base"
+RUN echo "from=ghcr.io/sdr-enthusiasts/docker-baseimage:mlatclient" && \
+    echo --mount=type=bind,from=ghcr.io/sdr-enthusiasts/docker-baseimage:mlatclient
+RUN \
+    # a comment inside the instruction
+    --mount=type=bind,from=ghcr.io/sdr-enthusiasts/docker-baseimage:forky-soapy-full,source=/,target=/soapy \
+
+    set -x
+COPY <<EOF /etc/notes
+FROM ghcr.io/sdr-enthusiasts/docker-baseimage:dump978-full
+COPY --from=ghcr.io/sdr-enthusiasts/docker-baseimage:wreadsb /x /x
+EOF
+RUN <<-'SCRIPT' bash
+	echo from=ghcr.io/sdr-enthusiasts/docker-baseimage:base
+	SCRIPT
+RUN read -r x <<<"$HOME" && echo "$x"
+COPY --chown=1000:1000 --from=ghcr.io/sdr-enthusiasts/docker-baseimage:forky-wreadsb /usr/local/bin/readsb /usr/local/bin/
+FROM ghcr.io/sdr-enthusiasts/docker-baseimage:forky-wreadsb

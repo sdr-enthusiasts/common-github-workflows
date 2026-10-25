@@ -17,9 +17,13 @@
 # --map-tag applies the same rule to a published tag, so the workflow names its
 # output with exactly the logic used for its inputs.
 #
+# The Dockerfile is read as logical instructions (continuation lines joined,
+# comment lines inside an instruction skipped), and only the image references an
+# instruction actually consumes are considered: FROM's image, COPY --from= and
+# RUN --mount=...,from=, all in the flags before the command starts. Comments,
+# LABELs, command text and heredoc bodies are never touched and never count.
 # References already on the variant (<variant>-*, next, next-*) are left alone,
-# so running this twice is harmless. References anywhere else (LABEL, echo,
-# comments) and images outside <owner> are never touched.
+# so running this twice is harmless. Images outside <owner> are never touched.
 #
 # --exclude names images that do not depend on the Debian release (for example
 # acars-bridge, a static binary in a FROM scratch image) and so have no next
@@ -32,8 +36,9 @@
 #                         [--exclude <image>[,<image>...]] [--verify-exists]
 #   apply-base-variant.sh --variant <codename> --map-tag <tag>
 #
-# Fails when the variant is invalid, a reference is pinned by digest, no SDR-E
-# reference is found, or (with --verify-exists) a rewritten image does not exist.
+# Fails when the variant is invalid, a reference is pinned by digest or built
+# from a build argument, no SDR-E reference is consumed, or (with
+# --verify-exists) a rewritten image does not exist.
 # Each of those would otherwise produce an image that claims to be built on the
 # next release but is not.
 
@@ -118,11 +123,6 @@ for name in "${exclude_list[@]}"; do
 done
 
 PREFIX="ghcr.io/${OWNER}/"
-PREFIX_RE="ghcr\\.io/${OWNER}/"
-# A reference ends at whitespace, a comma (mount options) or a quote.
-REF_RE="${PREFIX_RE}[^[:space:],\"']+"
-RE_FROM="^([[:space:]]*[Ff][Rr][Oo][Mm][[:space:]]+(--platform=[^[:space:]]+[[:space:]]+)?)(${REF_RE})(.*)$"
-RE_EQ="^(.*[Ff][Rr][Oo][Mm]=)(${REF_RE})(.*)$"
 
 declare -A SEEN=()
 declare -a TARGETS=()
@@ -171,37 +171,144 @@ rewrite_ref() {
 	fi
 }
 
-# Result in NEW_LINE.
-rewrite_line() {
-	local line="$1" head ref tail done_part=""
-
-	if [[ "$line" =~ $RE_FROM ]]; then
-		head="${BASH_REMATCH[1]}"
-		ref="${BASH_REMATCH[3]}"
-		tail="${BASH_REMATCH[4]}"
+# Handle an image reference the build consumes. SDR-E images are rewritten,
+# other images and stage names are left alone, and anything that is only
+# resolved at build time is refused because what it names cannot be checked.
+# Result in NEW_REF.
+consume_ref() {
+	local ref="$1" what="$2"
+	if [[ "$ref" == *'$'* ]]; then
+		die "${what} '${ref}' uses a build argument; base_variant cannot tell which image it names. Write the image reference literally."
+	fi
+	if [[ "$ref" == "$PREFIX"* ]]; then
 		rewrite_ref "$ref"
-		line="${head}${NEW_REF}${tail}"
+	else
+		NEW_REF="$ref"
+	fi
+}
+
+# Handle one token while still in an instruction's flag region: FROM's flags
+# and image, COPY's --from=, RUN's --mount=...,from=. The first token that is
+# not a flag ends the region; everything after it is payload and never touched.
+# Result in NEW_TOKEN.
+process_token() {
+	local tok="$1" opts opt joined i
+	NEW_TOKEN="$tok"
+
+	if [[ "$tok" == --* ]]; then
+		case "$INSTR" in
+		COPY)
+			if [[ "$tok" == --from=* ]]; then
+				consume_ref "${tok#--from=}" "COPY --from"
+				NEW_TOKEN="--from=${NEW_REF}"
+			fi
+			;;
+		RUN)
+			if [[ "$tok" == --mount=* ]]; then
+				IFS=',' read -r -a opts <<<"${tok#--mount=}"
+				joined=""
+				for i in "${!opts[@]}"; do
+					opt="${opts[$i]}"
+					if [[ "$opt" == from=* ]]; then
+						consume_ref "${opt#from=}" "RUN --mount from"
+						opt="from=${NEW_REF}"
+					fi
+					if [[ "$i" -eq 0 ]]; then
+						joined="$opt"
+					else
+						joined+=",${opt}"
+					fi
+				done
+				NEW_TOKEN="--mount=${joined}"
+			fi
+			;;
+		esac
+		return
 	fi
 
-	# The greedy (.*) finds the last from= on the line; peel them off right to left.
-	while [[ "$line" =~ $RE_EQ ]]; do
-		head="${BASH_REMATCH[1]}"
-		ref="${BASH_REMATCH[2]}"
-		tail="${BASH_REMATCH[3]}"
-		rewrite_ref "$ref"
-		done_part="${NEW_REF}${tail}${done_part}"
-		line="$head"
-	done
-
-	NEW_LINE="${line}${done_part}"
+	if [[ "$INSTR" == "FROM" ]]; then
+		consume_ref "$tok" "FROM"
+		NEW_TOKEN="$NEW_REF"
+	fi
+	IN_FLAGS=false
 }
 
 echo "Applying base variant '${VARIANT}' to ${FILE}:" >&2
 
+# Walk logical instructions: a trailing backslash continues an instruction, and
+# comment or blank lines inside one are skipped (Docker drops them). Heredoc
+# bodies are copied verbatim.
+INSTR=""
+IN_INSTR=false
+IN_FLAGS=false
+LEADING_COMMENTS=true
+declare -a HEREDOCS=()
 declare -a OUT=()
+heredoc_re="^<<(-?)([\"']?)([A-Za-z_][A-Za-z0-9_]*)\\2$"
+
 while IFS= read -r line || [[ -n "$line" ]]; do
-	rewrite_line "$line"
-	OUT+=("$NEW_LINE")
+	if [[ ${#HEREDOCS[@]} -gt 0 && "$IN_INSTR" == false ]]; then
+		OUT+=("$line")
+		term="${HEREDOCS[0]}"
+		check="$line"
+		if [[ "$term" == -* ]]; then
+			term="${term#-}"
+			check="${line#"${line%%[!$'\t']*}"}"
+		fi
+		if [[ "$check" == "$term" ]]; then
+			HEREDOCS=("${HEREDOCS[@]:1}")
+		fi
+		continue
+	fi
+
+	if [[ "$line" =~ ^[[:space:]]*(#.*)?$ ]]; then
+		# Parser directives only count in the comment block at the very top.
+		if [[ "$LEADING_COMMENTS" == true && "$line" =~ ^#[[:space:]]*escape[[:space:]]*=[[:space:]]*([^[:space:]]) ]]; then
+			[[ "${BASH_REMATCH[1]}" == "\\" ]] || die "the '# escape=' parser directive is not supported with base_variant"
+		fi
+		OUT+=("$line")
+		continue
+	fi
+	LEADING_COMMENTS=false
+
+	content="$line"
+	suffix=""
+	continues=false
+	if [[ "$line" =~ ^(.*)(\\[[:space:]]*)$ ]]; then
+		content="${BASH_REMATCH[1]}"
+		suffix="${BASH_REMATCH[2]}"
+		continues=true
+	fi
+
+	out=""
+	remaining="$content"
+	if [[ "$IN_INSTR" == false ]]; then
+		[[ "$content" =~ ^([[:space:]]*)([^[:space:]]+)(.*)$ ]]
+		out="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+		remaining="${BASH_REMATCH[3]}"
+		INSTR="${BASH_REMATCH[2]^^}"
+		case "$INSTR" in
+		FROM | RUN | COPY | ADD) IN_FLAGS=true ;;
+		*) IN_FLAGS=false ;;
+		esac
+	fi
+
+	while [[ "$remaining" =~ ^([[:space:]]*)([^[:space:]]+)(.*)$ ]]; do
+		ws="${BASH_REMATCH[1]}"
+		tok="${BASH_REMATCH[2]}"
+		remaining="${BASH_REMATCH[3]}"
+		if [[ "$IN_FLAGS" == true ]]; then
+			process_token "$tok"
+			tok="$NEW_TOKEN"
+		fi
+		if [[ "$INSTR" =~ ^(RUN|COPY|ADD)$ && "$tok" =~ $heredoc_re ]]; then
+			HEREDOCS+=("${BASH_REMATCH[1]}${BASH_REMATCH[3]}")
+		fi
+		out+="${ws}${tok}"
+	done
+
+	OUT+=("${out}${remaining}${suffix}")
+	IN_INSTR="$continues"
 done <"$FILE"
 
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
@@ -222,6 +329,3 @@ if [[ "$VERIFY_EXISTS" == true ]]; then
 	done
 	[[ "$missing" -eq 0 ]] || exit 1
 fi
-
-echo "--- image references after rewrite ---" >&2
-grep -nE "^[[:space:]]*[Ff][Rr][Oo][Mm][[:space:]]|[Ff][Rr][Oo][Mm]=" "$FILE" >&2 || true
