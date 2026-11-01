@@ -26,6 +26,11 @@
       "matchManagers": ["github-actions", "nix"],
       "matchUpdateTypes": ["major", "minor", "patch", "pin"],
       "automerge": true
+    },
+    {
+      "description": "The base-variant build fixture must stay tag-pinned: apply-base-variant.sh refuses digest-pinned FROMs because the digest would keep the build on the stable image.",
+      "matchFileNames": ["test_fixtures/base-variant-build/**"],
+      "pinDigests": false
     }
   ]
 }
