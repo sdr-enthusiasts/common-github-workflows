@@ -150,6 +150,14 @@ on:
         type: boolean
         required: false
         default: false
+      armv7_force_emulation:
+        description: >-
+          Testing only. Build linux/arm/v7 under QEMU even when the runner host
+          can execute it natively, so the emulation fallback can be exercised
+          on demand.
+        type: boolean
+        required: false
+        default: false
 
     secrets:
       ghcr_token:
@@ -440,6 +448,70 @@ jobs:
         if: ${{ matrix.ENABLED }}
         id: buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # ---------------------------------------------------------------------
+      # armv7 on hosts without AArch32 support
+      #
+      # linux/arm/v7 is built natively on the ubuntu-24.04-arm runners, which
+      # relies on the host CPU being able to execute 32-bit ARM code. GitHub's
+      # arm64 runner pool is a mix of hosts: some can, some cannot (same runner
+      # image and kernel, different hardware). On a host that cannot, every RUN
+      # step fails with "exec /bin/bash: exec format error".
+      #
+      # BuildKit probes the host when the builder boots, so the platforms
+      # reported by setup-buildx tell us up front whether arm/v7 can run
+      # natively. Only when it cannot do we register QEMU for arm and boot a
+      # fresh builder that picks it up. Native hosts pay nothing, and the
+      # arm64 and amd64 legs never reach these steps.
+      #
+      # This is a stop-gap: it keeps armv7 building while the long-term future
+      # of armv7 support is decided.
+      # ---------------------------------------------------------------------
+      - name: Check native armv7 support
+        id: armv7
+        if: ${{ matrix.ENABLED && matrix.TARGET_NAME == 'linux/arm/v7' }}
+        env:
+          BUILDER_PLATFORMS: ${{ steps.buildx.outputs.platforms }}
+          FORCE_EMULATION: ${{ inputs.armv7_force_emulation }}
+        run: |
+          set -euo pipefail
+          echo "builder platforms: ${BUILDER_PLATFORMS}"
+          if [[ "${FORCE_EMULATION}" == "true" ]]; then
+            echo "native=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=armv7 emulated::armv7_force_emulation is set; building linux/arm/v7 under QEMU."
+          elif [[ ",${BUILDER_PLATFORMS// /}," == *",linux/arm/v7,"* ]]; then
+            echo "native=true" >> "$GITHUB_OUTPUT"
+            echo "host supports linux/arm/v7 natively"
+          else
+            echo "native=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=armv7 emulated::This runner host cannot execute 32-bit ARM natively; building linux/arm/v7 under QEMU (slower)."
+          fi
+
+      - name: Set up QEMU for armv7
+        if: ${{ steps.armv7.outputs.native == 'false' }}
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm
+
+      # The builder booted above has already fixed its platform list, so boot a
+      # new one now that the arm emulator is registered. It becomes the default
+      # builder for the build steps below.
+      - name: Set up Docker Buildx (armv7 emulated)
+        id: buildx_emulated
+        if: ${{ steps.armv7.outputs.native == 'false' }}
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Confirm emulated armv7 builder
+        if: ${{ steps.armv7.outputs.native == 'false' }}
+        env:
+          BUILDER_PLATFORMS: ${{ steps.buildx_emulated.outputs.platforms }}
+        run: |
+          set -euo pipefail
+          echo "builder platforms: ${BUILDER_PLATFORMS}"
+          if [[ ",${BUILDER_PLATFORMS// /}," != *",linux/arm/v7,"* ]]; then
+            echo "::error title=armv7 unavailable::linux/arm/v7 is still not supported by the builder after registering QEMU."
+            exit 1
+          fi
 
       # =====================================================================
       # Dockerfile rewriting
