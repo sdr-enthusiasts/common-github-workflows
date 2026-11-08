@@ -57,6 +57,23 @@ jobs:
     secrets:
       ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
+  # Exercises the QEMU fallback used when an arm64 runner host cannot execute
+  # 32-bit ARM natively. Which host a job lands on is out of our control, so
+  # force the fallback rather than waiting for an unlucky host to test it.
+  build_armv7_emulated:
+    uses: ./.github/workflows/sdre.yml
+    name: "Build armv7 under forced emulation"
+    with:
+      push_enabled: false
+      ghcr_repo_owner: mikenye
+      ghcr_repo: ${{ github.repository }}
+      platform_linux_amd64_enabled: false
+      platform_linux_arm64v8_enabled: false
+      armv7_force_emulation: true
+
+    secrets:
+      ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
   # Proves the base variant rewrite handles every reference form and still
   # refuses each input that would otherwise yield a mislabelled "next" image.
   base_variant_selftest:
