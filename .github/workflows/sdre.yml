@@ -32,12 +32,10 @@ on:
         description: "The github username/profile/organisation the repo to be pushed to belongs to"
         required: true
         type: string
-        default: ""
       ghcr_repo:
         description: "The ghcr.io repository the image should be pushed to"
         required: true
         type: string
-        default: ""
       platform_linux_arm32v7_enabled:
         description: "Set to true to build for the linux/arm/v7 platform"
         type: boolean
@@ -199,7 +197,7 @@ jobs:
         run: |
           # create a unique id for the digest
           id="$(uuidgen)"
-          echo "digest_id=$id" >> $GITHUB_OUTPUT
+          echo "digest_id=$id" >> "$GITHUB_OUTPUT"
 
       # Check imported environment variable PUSH_ENABLED
       - name: "check 'push_enabled'"
@@ -209,9 +207,9 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ "${PUSH_ENABLED,,}" == "true" ]]; then
-            echo "push_enabled=true" >> $GITHUB_OUTPUT
+            echo "push_enabled=true" >> "$GITHUB_OUTPUT"
           elif [[ "${PUSH_ENABLED,,}" == "false" ]]; then
-            echo "push_enabled=false" >> $GITHUB_OUTPUT
+            echo "push_enabled=false" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::push_enabled should be 'true' or 'false'"
             FAIL_STEP=1
@@ -226,11 +224,11 @@ jobs:
           PUSH_DESTINATIONS: ${{ inputs.push_destinations }}
         run: |
           FAIL_STEP=0
-          echo "ghcr_io_enabled=false" >> $GITHUB_OUTPUT
+          echo "ghcr_io_enabled=false" >> "$GITHUB_OUTPUT"
           IFS=';' read -r -a PUSH_DESTINATIONS_ARRAY <<< "$PUSH_DESTINATIONS"
           for PUSH_DESTINATION in "${PUSH_DESTINATIONS_ARRAY[@]}"; do
             if [[ "${PUSH_DESTINATION,,}" == 'ghcr.io' ]]; then
-              echo "ghcr_io_enabled=true" >> $GITHUB_OUTPUT
+              echo "ghcr_io_enabled=true" >> "$GITHUB_OUTPUT"
             elif [[ "${PUSH_DESTINATION,,}" == 'dockerhub' ]]; then
               echo "::error title=${{ github.job }}: DockerHub support removed::push_destinations includes 'dockerhub', which is no longer supported. Remove it, and remove any dockerhub_profile/dockerhub_repo/dockerhub_username inputs and the dockerhub_token secret."
               FAIL_STEP=1
@@ -250,7 +248,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${GHCR_REPO}" ]]; then
-            echo "ghcr_repo=${GHCR_REPO,,}" >> $GITHUB_OUTPUT
+            echo "ghcr_repo=${GHCR_REPO,,}" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo is empty"
             FAIL_STEP=1
@@ -266,7 +264,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${GHCR_REPO_OWNER}" ]]; then
-            echo "ghcr_repo_owner=${GHCR_REPO_OWNER,,}" >> $GITHUB_OUTPUT
+            echo "ghcr_repo_owner=${GHCR_REPO_OWNER,,}" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo_owner is empty"
             FAIL_STEP=1
@@ -285,15 +283,15 @@ jobs:
           FAIL_STEP=0
           NUM_ARCHES=0
           if [[ "${PLATFORM_LINUX_ARM32V7_ENABLED,,}" == "true" ]]; then
-            echo "linux_arm32v7=true" >> $GITHUB_OUTPUT
+            echo "linux_arm32v7=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "${PLATFORM_LINUX_ARM64V8_ENABLED,,}" == "true" ]]; then
-            echo "linux_arm64=true" >> $GITHUB_OUTPUT
+            echo "linux_arm64=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "${PLATFORM_LINUX_AMD64_ENABLED,,}" == "true" ]]; then
-            echo "linux_amd64=true" >> $GITHUB_OUTPUT
+            echo "linux_amd64=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "$NUM_ARCHES" -le 0 ]]; then
@@ -312,14 +310,14 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_LATEST,,}" == "true" ]]; then
-            echo "build_latest=true" >> $GITHUB_OUTPUT
+            echo "build_latest=true" >> "$GITHUB_OUTPUT"
           fi
 
           if [[ -z "${DOCKER_LATEST_TAG}" ]]; then
               echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_LATEST_TAG is empty"
               FAIL_STEP=1
             else
-              echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> $GITHUB_OUTPUT
+              echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> "$GITHUB_OUTPUT"
           fi
 
           exit $FAIL_STEP
@@ -335,15 +333,15 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_BASEIMAGE_TEST,,}" == "true" ]]; then
-            echo "build_baseimage_test=true" >> $GITHUB_OUTPUT
+            echo "build_baseimage_test=true" >> "$GITHUB_OUTPUT"
             if [[ -z "${BUILD_BASEIMAGE_URL}" ]]; then
               echo "::error title=${{ github.job }}: Environment variable invalid::BUILD_BASEIMAGE_URL is empty"
               FAIL_STEP=1
             else
-              echo "build_baseimage_url=${BUILD_BASEIMAGE_URL}" >> $GITHUB_OUTPUT
+              echo "build_baseimage_url=${BUILD_BASEIMAGE_URL}" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "build_baseimage_test=false" >> $GITHUB_OUTPUT
+            echo "build_baseimage_test=false" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -357,13 +355,13 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ -n "${DOCKER_BUILD_CONTEXT}" ]]; then
-            echo "context=${DOCKER_BUILD_CONTEXT}" >> $GITHUB_OUTPUT
+            echo "context=${DOCKER_BUILD_CONTEXT}" >> "$GITHUB_OUTPUT"
           else
             FAIL_STEP=1
             echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_BUILD_CONTEXT is empty"
           fi
           if [[ -n "${DOCKER_BUILD_FILE}" ]]; then
-            echo "file=${DOCKER_BUILD_FILE}" >> $GITHUB_OUTPUT
+            echo "file=${DOCKER_BUILD_FILE}" >> "$GITHUB_OUTPUT"
           else
             FAIL_STEP=1
             echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_BUILD_FILE is empty"
@@ -378,7 +376,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ -n "${DOCKERFILE_CHANGES}" ]]; then
-            echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> $GITHUB_OUTPUT
+            echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -426,7 +424,7 @@ jobs:
         id: prepare
         run: |
           platform=${{ matrix.TARGET_NAME }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
+          echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_OUTPUT"
       # Check out code
       - name: Checkout
         if: ${{ matrix.ENABLED }}
@@ -642,7 +640,7 @@ jobs:
             IMAGE_NAMES+=("test_build")
           fi
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "names=${IMAGE_NAMES_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_TAGS=()
           if [[ "${{ needs.workflows_env.outputs.build_latest }}" == "true" ]]; then
             IMAGE_TAGS+=("${PUBLISH_TAG}")
@@ -656,7 +654,7 @@ jobs:
             fi
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "tags=${IMAGE_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_FULL_TAGS=()
           for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
             for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
@@ -664,7 +662,7 @@ jobs:
             done
           done
           printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
 
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
@@ -823,8 +821,11 @@ jobs:
 
             for image_name in "${IMAGE_NAMES[@]}"; do
               echo "Creating manifest for $image_name:$tag"
-              docker buildx imagetools create -t "$image_name:$tag" \
-                $(printf "$image_name@sha256:%s " *)
+              digest_refs=()
+              for digest in *; do
+                digest_refs+=("$image_name@sha256:$digest")
+              done
+              docker buildx imagetools create -t "$image_name:$tag" "${digest_refs[@]}"
             done
           done
 
