@@ -241,9 +241,9 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ "${PUSH_ENABLED,,}" == "true" ]]; then
-            echo "push_enabled=true" >> $GITHUB_OUTPUT
+            echo "push_enabled=true" >> "$GITHUB_OUTPUT"
           elif [[ "${PUSH_ENABLED,,}" == "false" ]]; then
-            echo "push_enabled=false" >> $GITHUB_OUTPUT
+            echo "push_enabled=false" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::push_enabled should be 'true' or 'false'"
             FAIL_STEP=1
@@ -258,14 +258,14 @@ jobs:
           PUSH_DESTINATIONS: ${{ inputs.push_destinations }}
         run: |
           FAIL_STEP=0
-          echo "ghcr_io_enabled=false" >> $GITHUB_OUTPUT
-          echo "dockerhub_enabled=false" >> $GITHUB_OUTPUT
+          echo "ghcr_io_enabled=false" >> "$GITHUB_OUTPUT"
+          echo "dockerhub_enabled=false" >> "$GITHUB_OUTPUT"
           IFS=';' read -r -a PUSH_DESTINATIONS_ARRAY <<< "$PUSH_DESTINATIONS"
           for PUSH_DESTINATION in "${PUSH_DESTINATIONS_ARRAY[@]}"; do
             if [[ "${PUSH_DESTINATION,,}" == 'ghcr.io' ]]; then
-              echo "ghcr_io_enabled=true" >> $GITHUB_OUTPUT
+              echo "ghcr_io_enabled=true" >> "$GITHUB_OUTPUT"
             elif [[ "${PUSH_DESTINATION,,}" == 'dockerhub' ]]; then
-              echo "dockerhub_enabled=true" >> $GITHUB_OUTPUT
+              echo "dockerhub_enabled=true" >> "$GITHUB_OUTPUT"
             else
               echo "::error title=${{ github.job }}: Environment variable invalid::push_destinations includes '$PUSH_DESTINATION'. Expected ';' separated list containing one or more of 'ghcr.io', 'dockerhub'"
               FAIL_STEP=1
@@ -282,7 +282,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${DOCKERHUB_PROFILE}" ]]; then
-            echo "dockerhub_profile=$DOCKERHUB_PROFILE" >> $GITHUB_OUTPUT
+            echo "dockerhub_profile=$DOCKERHUB_PROFILE" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::DOCKERHUB_PROFILE is empty"
             FAIL_STEP=1
@@ -299,9 +299,9 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${DOCKERHUB_USERNAME}" ]]; then
-            echo "dockerhub_username=$DOCKERHUB_USERNAME" >> $GITHUB_OUTPUT
+            echo "dockerhub_username=$DOCKERHUB_USERNAME" >> "$GITHUB_OUTPUT"
           elif [[ -n "${DOCKERHUB_PROFILE}" ]]; then
-            echo "dockerhub_username=$DOCKERHUB_PROFILE" >> $GITHUB_OUTPUT
+            echo "dockerhub_username=$DOCKERHUB_PROFILE" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variables invalid::dockerhub_username and dockerhub_profile are empty"
             FAIL_STEP=1
@@ -317,7 +317,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${DOCKERHUB_REPO}" ]]; then
-            echo "dockerhub_repo=$DOCKERHUB_REPO" >> $GITHUB_OUTPUT
+            echo "dockerhub_repo=$DOCKERHUB_REPO" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::dockerhub_repo is empty"
             FAIL_STEP=1
@@ -333,7 +333,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${GHCR_REPO}" ]]; then
-            echo "ghcr_repo=${GHCR_REPO,,}" >> $GITHUB_OUTPUT
+            echo "ghcr_repo=${GHCR_REPO,,}" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo is empty"
             FAIL_STEP=1
@@ -349,7 +349,7 @@ jobs:
         run: |
           FAIL_STEP=0
           if [[ -n "${GHCR_REPO_OWNER}" ]]; then
-            echo "ghcr_repo_owner=${GHCR_REPO_OWNER,,}" >> $GITHUB_OUTPUT
+            echo "ghcr_repo_owner=${GHCR_REPO_OWNER,,}" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=${{ github.job }}: Environment variable invalid::ghcr_repo_owner is empty"
             FAIL_STEP=1
@@ -370,23 +370,23 @@ jobs:
           FAIL_STEP=0
           NUM_ARCHES=0
           if [[ "${PLATFORM_LINUX_ARM32V6_ENABLED,,}" == "true" ]]; then
-            echo "linux_arm32v6=true" >> $GITHUB_OUTPUT
+            echo "linux_arm32v6=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "${PLATFORM_LINUX_ARM32V7_ENABLED,,}" == "true" ]]; then
-            echo "linux_arm32v7=true" >> $GITHUB_OUTPUT
+            echo "linux_arm32v7=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "${PLATFORM_LINUX_ARM64V8_ENABLED,,}" == "true" ]]; then
-            echo "linux_arm64=true" >> $GITHUB_OUTPUT
+            echo "linux_arm64=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "${PLATFORM_LINUX_AMD64_ENABLED,,}" == "true" ]]; then
-            echo "linux_amd64=true" >> $GITHUB_OUTPUT
+            echo "linux_amd64=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "${PLATFORM_LINUX_I386_ENABLED,,}" == "true" ]]; then
-            echo "linux_i386=true" >> $GITHUB_OUTPUT
+            echo "linux_i386=true" >> "$GITHUB_OUTPUT"
             NUM_ARCHES=$((NUM_ARCHES+1))
           fi
           if [[ "$NUM_ARCHES" -le 0 ]]; then
@@ -404,7 +404,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD,,}" == "true" ]]; then
-            echo "build_multi_arch_enabled=true" >> $GITHUB_OUTPUT
+            echo "build_multi_arch_enabled=true" >> "$GITHUB_OUTPUT"
             MULTI_ARCH_ARRAY=()
             if [[ "${{ steps.workflow_env_platform_enabled.outputs.linux_arm32v6 }}" == "true" ]]; then
               MULTI_ARCH_ARRAY+=("linux/arm/v6")
@@ -422,9 +422,9 @@ jobs:
               MULTI_ARCH_ARRAY+=("linux/i386")
             fi
             printf -v MULTI_ARCH_CSV '%s,' "${MULTI_ARCH_ARRAY[@]}"
-            echo "multi_arch_csv=${MULTI_ARCH_CSV::-1}" >> $GITHUB_OUTPUT
+            echo "multi_arch_csv=${MULTI_ARCH_CSV::-1}" >> "$GITHUB_OUTPUT"
             printf -v MULTI_ARCH_JSON '"%s",' "${MULTI_ARCH_ARRAY[@]}"
-            echo "multi_arch_matrix_json={\"platform\":[${MULTI_ARCH_JSON::-1}]}" >> $GITHUB_OUTPUT
+            echo "multi_arch_matrix_json={\"platform\":[${MULTI_ARCH_JSON::-1}]}" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -437,7 +437,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_PLATFORM_SPECIFIC,,}" == "true" ]]; then
-            echo "build_single_arch_enabled=true" >> $GITHUB_OUTPUT
+            echo "build_single_arch_enabled=true" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -451,14 +451,14 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_LATEST,,}" == "true" ]]; then
-            echo "build_latest=true" >> $GITHUB_OUTPUT
+            echo "build_latest=true" >> "$GITHUB_OUTPUT"
           fi
 
           if [[ -z "${DOCKER_LATEST_TAG}" ]]; then
               echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_LATEST_TAG is empty"
               FAIL_STEP=1
             else
-              echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> $GITHUB_OUTPUT
+              echo "docker_latest_tag=${DOCKER_LATEST_TAG}" >> "$GITHUB_OUTPUT"
           fi
 
           exit $FAIL_STEP
@@ -472,7 +472,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_TEST,,}" == "true" ]]; then
-            echo "build_test=true" >> $GITHUB_OUTPUT
+            echo "build_test=true" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -487,15 +487,15 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_BASEIMAGE_TEST,,}" == "true" ]]; then
-            echo "build_baseimage_test=true" >> $GITHUB_OUTPUT
+            echo "build_baseimage_test=true" >> "$GITHUB_OUTPUT"
             if [[ -z "${BUILD_BASEIMAGE_URL}" ]]; then
               echo "::error title=${{ github.job }}: Environment variable invalid::BUILD_BASEIMAGE_URL is empty"
               FAIL_STEP=1
             else
-              echo "build_baseimage_url=${BUILD_BASEIMAGE_URL}" >> $GITHUB_OUTPUT
+              echo "build_baseimage_url=${BUILD_BASEIMAGE_URL}" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "build_baseimage_test=false" >> $GITHUB_OUTPUT
+            echo "build_baseimage_test=false" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -508,7 +508,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_VERSION_SPECIFIC,,}" == "true" ]]; then
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
+            echo "build_version_specific=true" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -524,40 +524,40 @@ jobs:
           ARGS=$(echo "$GET_VERSION_METHOD" | cut -d ":" -f 2-)
           case "${METHOD,,}" in
             cargo_toml_file_in_repo)
-              echo "method=cargo_toml_file_in_repo" >> $GITHUB_OUTPUT
+              echo "method=cargo_toml_file_in_repo" >> "$GITHUB_OUTPUT"
               FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
               if [[ -n "$FILENAME" ]]; then
-                echo "cargo_toml_file_in_repo=$FILENAME" >> $GITHUB_OUTPUT
+                echo "cargo_toml_file_in_repo=$FILENAME" >> "$GITHUB_OUTPUT"
               else
                 echo "::error title=${{ github.job }}: Environment variable invalid::cargo_toml_file_in_repo method requires valid 'file=' argument"
                 FAIL_STEP=1
               fi
               ;;
             cargo_toml_file_in_image)
-              echo "method=cargo_toml_file_in_image" >> $GITHUB_OUTPUT
+              echo "method=cargo_toml_file_in_image" >> "$GITHUB_OUTPUT"
               FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
               if [[ -n "$FILENAME" ]]; then
-                echo "cargo_toml_file_in_image=$FILENAME" >> $GITHUB_OUTPUT
+                echo "cargo_toml_file_in_image=$FILENAME" >> "$GITHUB_OUTPUT"
               else
                 echo "::error title=${{ github.job }}: Environment variable invalid::cargo_toml_file_in_image method requires valid 'file=' argument"
                 FAIL_STEP=1
               fi
               ;;
             file_in_container)
-              echo "method=file_in_container" >> $GITHUB_OUTPUT
+              echo "method=file_in_container" >> "$GITHUB_OUTPUT"
               FILENAME=$(echo "$ARGS" | grep -E '^[fF][iI][lL][eE]=[\/a-zA-Z0-9\s_\\.\-\(\):]+$' | cut -d "=" -f 2-)
               if [[ -n "$FILENAME" ]]; then
-                echo "file_in_container=$FILENAME" >> $GITHUB_OUTPUT
+                echo "file_in_container=$FILENAME" >> "$GITHUB_OUTPUT"
               else
                 echo "::error title=${{ github.job }}: Environment variable invalid::file_in_container method requires valid 'file=' argument"
                 FAIL_STEP=1
               fi
               ;;
             git_commit_hash_short)
-              echo "method=git_commit_hash_short" >> $GITHUB_OUTPUT
+              echo "method=git_commit_hash_short" >> "$GITHUB_OUTPUT"
               ;;
             build_number)
-              echo "method=build_number" >> $GITHUB_OUTPUT
+              echo "method=build_number" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "::error title=${{ github.job }}: Environment variable invalid::'$METHOD' method is unsupported. See documentation."
@@ -576,7 +576,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_VERSION_SPECIFIC_WITH_BUILD_NUMBER,,}" == "true" ]]; then
-            echo "build_version_specific_with_build_number=true" >> $GITHUB_OUTPUT
+            echo "build_version_specific_with_build_number=true" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -588,7 +588,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_NOHEALTHCHECK,,}" == "true" ]]; then
-            echo "build_nohealthcheck=true" >> $GITHUB_OUTPUT
+            echo "build_nohealthcheck=true" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -602,13 +602,13 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ -n "${DOCKER_BUILD_CONTEXT}" ]]; then
-            echo "context=${DOCKER_BUILD_CONTEXT}" >> $GITHUB_OUTPUT
+            echo "context=${DOCKER_BUILD_CONTEXT}" >> "$GITHUB_OUTPUT"
           else
             FAIL_STEP=1
             echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_BUILD_CONTEXT is empty"
           fi
           if [[ -n "${DOCKER_BUILD_FILE}" ]]; then
-            echo "file=${DOCKER_BUILD_FILE}" >> $GITHUB_OUTPUT
+            echo "file=${DOCKER_BUILD_FILE}" >> "$GITHUB_OUTPUT"
           else
             FAIL_STEP=1
             echo "::error title=${{ github.job }}: Environment variable invalid::DOCKER_BUILD_FILE is empty"
@@ -624,7 +624,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ "${BUILD_WITH_TMPFS,,}" == "true" ]]; then
-            echo "build_with_tmpfs=true" >> $GITHUB_OUTPUT
+            echo "build_with_tmpfs=true" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -636,7 +636,7 @@ jobs:
           set -x
           FAIL_STEP=0
           if [[ -n "${DOCKERFILE_CHANGES}" ]]; then
-            echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> $GITHUB_OUTPUT
+            echo "dockerfile_changes=${DOCKERFILE_CHANGES}" >> "$GITHUB_OUTPUT"
           fi
           exit $FAIL_STEP
 
@@ -670,7 +670,7 @@ jobs:
         run: |
           set -x
           ARCH_SUFFIX=$(echo "${{ matrix.platform }}" | tr "/" "_")
-          echo "platform_suffix=${ARCH_SUFFIX,,}" >> $GITHUB_OUTPUT
+          echo "platform_suffix=${ARCH_SUFFIX,,}" >> "$GITHUB_OUTPUT"
 
       # Log into dockerhub
       - name: Login to DockerHub
@@ -760,10 +760,10 @@ jobs:
 
           if [[ -z "${VERSION}" ]]; then
             echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
+            echo "build_version_specific=false" >> "$GITHUB_OUTPUT"
           else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "build_version_specific=true" >> "$GITHUB_OUTPUT"
+            echo "image_version=${VERSION}" >> "$GITHUB_OUTPUT"
           fi
 
       # Determine image names/tags
@@ -782,7 +782,7 @@ jobs:
             IMAGE_NAMES+=("test_build")
           fi
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "names=${IMAGE_NAMES_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_TAGS=()
           if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
@@ -791,7 +791,7 @@ jobs:
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_${{ steps.platform_suffix.outputs.platform_suffix }}")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "tags=${IMAGE_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_FULL_TAGS=()
           for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
             for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
@@ -799,7 +799,7 @@ jobs:
             done
           done
           printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
 
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
@@ -935,10 +935,10 @@ jobs:
           esac
           if [[ -z "${VERSION}" ]]; then
             echo "::warning title=${{ github.job }} (manifest): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
+            echo "build_version_specific=false" >> "$GITHUB_OUTPUT"
           else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "build_version_specific=true" >> "$GITHUB_OUTPUT"
+            echo "image_version=${VERSION}" >> "$GITHUB_OUTPUT"
           fi
 
       # Determine image names/tags
@@ -957,7 +957,7 @@ jobs:
             IMAGE_NAMES+=("test_build")
           fi
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "names=${IMAGE_NAMES_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_TAGS=()
           if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}")
@@ -977,7 +977,7 @@ jobs:
             fi
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "tags=${IMAGE_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_FULL_TAGS=()
           for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
             for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
@@ -985,7 +985,7 @@ jobs:
             done
           done
           printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
 
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
@@ -1045,7 +1045,7 @@ jobs:
         run: |
           set -x
           ARCH_SUFFIX=$(echo "${{ matrix.platform }}" | tr "/" "_")
-          echo "platform_suffix=${ARCH_SUFFIX,,}" >> $GITHUB_OUTPUT
+          echo "platform_suffix=${ARCH_SUFFIX,,}" >> "$GITHUB_OUTPUT"
 
       # Log into dockerhub
       - name: Login to DockerHub
@@ -1147,10 +1147,10 @@ jobs:
           esac
           if [[ -z "${VERSION}" ]]; then
             echo "::warning title=${{ github.job }} (${{ matrix.platform }}): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
+            echo "build_version_specific=false" >> "$GITHUB_OUTPUT"
           else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "build_version_specific=true" >> "$GITHUB_OUTPUT"
+            echo "image_version=${VERSION}" >> "$GITHUB_OUTPUT"
           fi
 
       # Determine image names/tags
@@ -1170,7 +1170,7 @@ jobs:
             IMAGE_NAMES+=("test_build")
           fi
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "names=${IMAGE_NAMES_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_TAGS=()
           if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
@@ -1179,7 +1179,7 @@ jobs:
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_${{ steps.platform_suffix.outputs.platform_suffix }}_nohealthcheck")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "tags=${IMAGE_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_FULL_TAGS=()
           for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
             for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
@@ -1187,7 +1187,7 @@ jobs:
             done
           done
           printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
 
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
@@ -1343,10 +1343,10 @@ jobs:
           esac
           if [[ -z "${VERSION}" ]]; then
             echo "::warning title=${{ github.job }} (manifest): No image version::No image version output returned, cannot build version specific images"
-            echo "build_version_specific=false" >> $GITHUB_OUTPUT
+            echo "build_version_specific=false" >> "$GITHUB_OUTPUT"
           else
-            echo "build_version_specific=true" >> $GITHUB_OUTPUT
-            echo "image_version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "build_version_specific=true" >> "$GITHUB_OUTPUT"
+            echo "image_version=${VERSION}" >> "$GITHUB_OUTPUT"
           fi
 
       # Determine image names/tags
@@ -1366,7 +1366,7 @@ jobs:
             IMAGE_NAMES+=("test_build")
           fi
           printf -v IMAGE_NAMES_CSV '%s,' "${IMAGE_NAMES[@]}"
-          echo "names=${IMAGE_NAMES_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "names=${IMAGE_NAMES_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_TAGS=()
           if [[ "${{ steps.image_version.outputs.build_version_specific }}" == "true" ]]; then
             IMAGE_TAGS+=("${{ steps.image_version.outputs.image_version }}_nohealthcheck")
@@ -1375,7 +1375,7 @@ jobs:
             IMAGE_TAGS+=("${{ needs.workflows_env.outputs.build_latest_tag }}_nohealthcheck")
           fi
           printf -v IMAGE_TAGS_CSV '%s,' "${IMAGE_TAGS[@]}"
-          echo "tags=${IMAGE_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "tags=${IMAGE_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
           IMAGE_FULL_TAGS=()
           for IMAGE_NAME in "${IMAGE_NAMES[@]}"; do
             for IMAGE_TAG in "${IMAGE_TAGS[@]}"; do
@@ -1383,7 +1383,7 @@ jobs:
             done
           done
           printf -v IMAGE_FULL_TAGS_CSV '%s,' "${IMAGE_FULL_TAGS[@]}"
-          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> $GITHUB_OUTPUT
+          echo "full_name_tags=${IMAGE_FULL_TAGS_CSV::-1}" >> "$GITHUB_OUTPUT"
 
       # Get metadata from repo
       - name: Extract metadata (tags, labels) for Docker
