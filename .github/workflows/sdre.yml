@@ -613,6 +613,17 @@ jobs:
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
           latest_tag: ${{ needs.workflows_env.outputs.build_latest_tag }}
 
+      # The commit being built (the PR head on pull requests), passed to every
+      # build below as the VERSION_SHA build-arg. Dockerfiles stamp their
+      # version from it instead of calling the GitHub API mid-build, which is
+      # unauthenticated and rate limited per shared runner IP.
+      - name: Determine version sha
+        id: version_sha
+        if: ${{ matrix.ENABLED }}
+        env:
+          VERSION_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: echo "sha=${VERSION_SHA}" >> "$GITHUB_OUTPUT"
+
       # Determine image names/tags
       - name: Determine image names/tags
         id: image_names_tags
@@ -671,6 +682,7 @@ jobs:
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          build-args: VERSION_SHA=${{ steps.version_sha.outputs.sha }}
           platforms: ${{ matrix.TARGET_NAME }}
           tags: ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -684,6 +696,7 @@ jobs:
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          build-args: VERSION_SHA=${{ steps.version_sha.outputs.sha }}
           platforms: ${{ matrix.TARGET_NAME }}
           tags: ghcr.io/${{ needs.workflows_env.outputs.ghcr_repo }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -709,6 +722,7 @@ jobs:
         with:
           context: ${{ needs.workflows_env.outputs.docker_build_context }}
           file: ${{ needs.workflows_env.outputs.docker_build_file }}.use
+          build-args: VERSION_SHA=${{ steps.version_sha.outputs.sha }}
           platforms: ${{ matrix.TARGET_NAME }}
           labels: ${{ steps.meta.outputs.labels }}
           tags: sdre-verify-local:${{ steps.prepare.outputs.PLATFORM_PAIR }}
